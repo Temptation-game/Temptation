@@ -1,0 +1,11 @@
+{
+  "name": "temptation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Temptation: a tactical card game about lesbian nuns and vampires",
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "sim": "node src/cli.ts"
+  }
+}

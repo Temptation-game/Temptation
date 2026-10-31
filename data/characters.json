@@ -1,0 +1,11 @@
+[
+  { "id": "placeholder_a", "cost": 1,
+    "faces": { "church": { "name": "Sister A", "charm": 1, "composure": 3 },
+               "court":  { "name": "Lady A",   "charm": 2, "composure": 2 } } },
+  { "id": "placeholder_b", "cost": 2,
+    "faces": { "church": { "name": "Sister B", "charm": 2, "composure": 4 },
+               "court":  { "name": "Lady B",   "charm": 3, "composure": 3 } } },
+  { "id": "placeholder_c", "cost": 3,
+    "faces": { "church": { "name": "Sister C", "charm": 3, "composure": 5 },
+               "court":  { "name": "Lady C",   "charm": 4, "composure": 4 } } }
+]
