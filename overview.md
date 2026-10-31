@@ -2,7 +2,7 @@
 
 *for all rules marked with \*, read it as "unless a card specifies otherwise".*
 
-Welcome to Temptation, a deck-building game about nuns and vampires, where all sides are lesbian!
+Welcome to Temptation, a tactical card game about nuns and vampires, where all sides are lesbian!
 
 There are two factions in the game: Church and Clan.
 
@@ -10,7 +10,7 @@ There are three types of cards: a Character, an Item, and an Incantation.
 
 Each Character card has two sides, who they are as a nun and who they are as a vampire.
 
-During the game, a card on the field may get flipped and be given to your opponent. Such card is called *tempted*. Sometimes a card can also be flipped without leaving the field - when you do so, you *convert* it.
+During the game, a card on the field may get flipped and be given to your opponent into their hand. Such card is called *tempted*. Sometimes a card can also be flipped without leaving the field - when you do so, you *convert* it.
 
 Item and Incantation cards are auxiliary. You never start with these cards in your deck.
 
@@ -18,7 +18,7 @@ Item and Incantation cards are auxiliary. You never start with these cards in yo
 
 Each player starts with 5 cards.
 
-On their first turn, the first player has 1 Wine/Blood and the second has 2 Wine/Blood. After that, the Wine/Blood counter proceeds as normal.
+On their first turn, the first player has 1 Wine/Blood and the second has 2 Wine/Blood. After that, the Wine/Blood counter proceeds as described in Turn.
 
 ## Turn
 
@@ -27,7 +27,7 @@ Each turn has the following structure:
 1) Start phase:
 - Draw a card, if possible.
 - If you have more than 5 cards in hand, discard until you have 5 cards.
-- Reset Wine/Blood (equal to the number of current player's turn + modifiers).
+- Reset Wine/Blood (equal to the number of current player's turn, capped at 10 + modifiers).
 2) Play phase: Play your new characters on the field.
 3) Act phase: Act for your Characters (you have a shared pool of 3 actions + modifiers).
 
@@ -55,7 +55,7 @@ To play a Character, pay her cost in Wine/Blood, then place her on the field in 
 
 Each Character has Charm and Composure. Some Characters may also have a Special or Chant specified.
 
-As a part of your Act phase, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (make an opposite-faction Character in an adjacent square lose Composure). The number of Composure points she loses equals to her interlocutor's *Charm* + modifiers.
+As a part of your Act phase, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (both your and an opposite-faction Character in an adjacent square lose Composure). The number of Composure points a character loses equals to her interlocutor's *Charm* + modifiers.
 
 Actions can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
 
@@ -75,7 +75,7 @@ An Item card can be Carried by a Character or stay on a square of the field.
 
 Some Item cards are *large*. They occupy a place on the field and cannot be carried.
 
-A Character can only carry one Item at a time\*.
+A Character can only carry one Item at a time\*. An item of a Character who got tempted is discarded.
 
 ## Incantations
 
