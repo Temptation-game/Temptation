@@ -4,7 +4,7 @@
 
 Welcome to Temptation, a tactical card game about nuns and vampires, where all sides are lesbian!
 
-There are two factions in the game: Church and Clan.
+There are two factions in the game: Church and Court.
 
 There are three types of cards: a Character, an Item, and an Incantation.
 
@@ -26,7 +26,7 @@ Each turn has the following structure:
 
 1) Start phase:
 - Draw a card, if possible.
-- If you have more than 5 cards in hand, discard until you have 5 cards.
+- If you have more than 6 cards in hand, discard until you have 6 cards.
 - Reset Wine/Blood (equal to the number of current player's turn, capped at 10 + modifiers).
 2) Play phase: Play your new characters on the field.
 3) Act phase: Act for your Characters (you have a shared pool of 3 actions + modifiers).
@@ -62,6 +62,12 @@ Actions can be also spent on triggering a Special or a Chant. Some of them may c
 A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. Next time she is played, she enters with full Composure\*.
 
 A Character can only be *converted* through Specials.
+
+## Marriage
+
+If both the flirting character and her target (or targets) would have been *tempted* simultaneously, they get *married*. Married characters leave the game. Unlike the discarded characters, they cannot be brought back by any means, including Chants and Specials.
+
+Items the newly married characters were carrying go to the discard pile.
 
 ## Item
 
