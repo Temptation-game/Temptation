@@ -8,29 +8,26 @@ There are two factions in the game: Church and Clan.
 
 There are three types of cards: a Character, an Item, and an Incantation.
 
-Each Character card has two sides, who they are as a nun and who they are as a vampire. You start with all cards your Faction's face up\*.
+Each Character card has two sides, who they are as a nun and who they are as a vampire.
 
-During the game, a card may get flipped. A card that flipped the side opposite from its faction is called *tempted*. A card can be *tempted* temporarily, for a number of turns, or until some other effect stops it. To stop a card from being tempted is to *redeem* it. A card can also be rendered permanently to be of the opposite faction until the end of the game, so that it no longer can be redeemed; to do so is to *convert* it.
+During the game, a card on the field may get flipped and be given to your opponent. Such card is called *tempted*. Sometimes a card can also be flipped without leaving the field - when you do so, you *convert* it.
 
 Item and Incantation cards are auxiliary. You never start with these cards in your deck.
 
-Most of Item and Incantation cards are one-sided and belong to the specific faction. Some are neutral (and do not have a faction) or two-sided (and can be flipped).
-
-You lose the game when one of the following is true:
-- at the start of your turn, you no longer have cards facing your faction's side up and you do not have a character in your hand you can play;
-- the entire field has been consecrated/desecrated.
+You lose the game when at the start of your turn, you no longer have characters on the field and you cannot play a character (either because you cannot pay the cost or because there are no holy/unholy squares to place one in).
 
 ## Start of game
 
-Each player starts with 0 Wine/Blood.
+Each player starts with 5 cards and 0 Wine/Blood.
 
 ## Turn
 
 Each turn has the following structure:
 - Draw a card.
-- Gain Wine/Blood (equal to the number of current turn + modifiers).
+- If you have more than 5 cards in hand, drop until you have 5 cards.
+- Reset Wine/Blood (equal to the number of current turn + modifiers).
 - Play your cards.
-- Act for your Characters (you have 3 actions + modifiers).
+- Act for your Characters (you have a shared pool of 3 actions + modifiers).
 
 ## Field
 
@@ -44,17 +41,15 @@ A square is *unoccupied* if there is no Character or Large item in it.
 
 ## Characters
 
-To play a Character, pay her cost in Wine/Blood, then place her on the field in your faction's unoccupied square. If a Character has an Icebreaker, do what it says in the Icebreaker.
+To play a Character, pay her cost in Wine/Blood, then place her on the field in your faction's unoccupied square\*, your faction's side up\*. If a Character has an Icebreaker, do what it says in the Icebreaker.
 
-Each Character has Composure and Courage. Some Characters may also have an Special or Chant specified.
+Each Character has Charm and Composure. Some Characters may also have an Special or Chant specified.
 
-As a part of your Round, you can have your character act. The default actions are to *move* to an adjacent unoccupied square, to *flirt* (make a Character in an adjacent square lose Composure), to *scare* (to make her lose Courage), or to consecrate/desecrate. The number of Composure or Courage points she loses equals to her interlocutor's *Charm* + modifiers.
+As a part of your Round, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (make a on opposite-faction Character in an adjacent square lose Composure). The number of Composure points she loses equals to her interlocutor's *Charm* + modifiers.
 
 Moves can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
 
-A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted* or *redeemed* correspondingly, and her Composure counter is reset.
-
-If your Character loses all Courage, she *flees* and is removed from the field. A character who *fled* is removed from the game\* (some effects only return her to your hand or deck).
+A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. A Character can only be *converted* through Specials.
 
 ## Item
 
@@ -62,7 +57,7 @@ Item cards cannot be part of the starting deck; they are brought in by Character
 
 Most Items are one-sided and belong to the specific faction. Some are neutral or two-sided. This may affect the way some Specials or Chants work.
 
-A Character cannot flirt with\* or scare\* an Item.
+A Character cannot flirt with an Item\*.
 
 An Item card can be Carried by a Character or stay on a square of the field.
 
@@ -80,7 +75,7 @@ An Incantation vanishes immediately upon playing.
 
 ## Location
 
-The default location is Town Square. It is a 5x5 playing field, where the westmost row is *unholy*, and the eastmost row is *holy*.
+The default location is Town Square. It is a 4x4 playing field, where the westmost row is *unholy*, and the eastmost row is *holy*.
 
 ## Glossary
 
