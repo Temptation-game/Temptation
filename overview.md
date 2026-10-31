@@ -1,6 +1,6 @@
 # TEMPTATION
 
-*for all rules marked with \*, read it as "unless a card specfies otherwise".*
+*for all rules marked with \*, read it as "unless a card specifies otherwise".*
 
 Welcome to Temptation, a deck-building game about nuns and vampires, where all sides are lesbian!
 
@@ -14,20 +14,26 @@ During the game, a card on the field may get flipped and be given to your oppone
 
 Item and Incantation cards are auxiliary. You never start with these cards in your deck.
 
-You lose the game when at the start of your turn, you no longer have characters on the field and you cannot play a character (either because you cannot pay the cost or because there are no holy/unholy squares to place one in).
-
 ## Start of game
 
-Each player starts with 5 cards and 0 Wine/Blood.
+Each player starts with 5 cards.
+
+On their first turn, the first player has 1 Wine/Blood and the second has 2 Wine/Blood. After that, the Wine/Blood counter proceeds as normal.
 
 ## Turn
 
 Each turn has the following structure:
-- Draw a card.
-- If you have more than 5 cards in hand, drop until you have 5 cards.
-- Reset Wine/Blood (equal to the number of current turn + modifiers).
-- Play your cards.
-- Act for your Characters (you have a shared pool of 3 actions + modifiers).
+
+1) Start phase:
+- Draw a card, if possible.
+- If you have more than 5 cards in hand, discard until you have 5 cards.
+- Reset Wine/Blood (equal to the number of current player's turn + modifiers).
+2) Play phase: Play your new characters on the field.
+3) Act phase: Act for your Characters (you have a shared pool of 3 actions + modifiers).
+
+## Game end
+
+You lose the game when at the end of your play phase, you no longer have characters on the field and you cannot or do not play a character (either because you cannot pay the cost or because there are no holy/unholy squares to place one in).
 
 ## Field
 
@@ -35,21 +41,27 @@ A field has *holy*, neutral, and *unholy* squares. A nun can only enter the fiel
 
 A square can be *consecrated* and become *holy*. It can be *desecrated* and become *unholy*.
 
-A an *adjacent* square is a square directly north, west, south, or east of a given one.
+An *adjacent* square is a square directly north, west, south, or east of a given one.
 
 A square is *unoccupied* if there is no Character or Large item in it.
+
+## Discard pile
+
+A character can be discarded due to hand limit, or due to a Special. A discarded character cannot re-enter the game\*.
 
 ## Characters
 
 To play a Character, pay her cost in Wine/Blood, then place her on the field in your faction's unoccupied square\*, your faction's side up\*. If a Character has an Icebreaker, do what it says in the Icebreaker.
 
-Each Character has Charm and Composure. Some Characters may also have an Special or Chant specified.
+Each Character has Charm and Composure. Some Characters may also have a Special or Chant specified.
 
-As a part of your Round, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (make a on opposite-faction Character in an adjacent square lose Composure). The number of Composure points she loses equals to her interlocutor's *Charm* + modifiers.
+As a part of your Act phase, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (make an opposite-faction Character in an adjacent square lose Composure). The number of Composure points she loses equals to her interlocutor's *Charm* + modifiers.
 
-Moves can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
+Actions can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
 
-A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. A Character can only be *converted* through Specials.
+A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. Next time she is played, she enters with full Composure\*.
+
+A Character can only be *converted* through Specials.
 
 ## Item
 
@@ -75,7 +87,7 @@ An Incantation vanishes immediately upon playing.
 
 ## Location
 
-The default location is Town Square. It is a 4x4 playing field, where the westmost row is *unholy*, and the eastmost row is *holy*.
+The default location is Town Square. It is a 4x4 playing field, where the westmost column is *unholy*, and the eastmost column is *holy*.
 
 ## Glossary
 
