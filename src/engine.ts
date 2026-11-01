@@ -5,7 +5,7 @@ import type {
   AbilityId, Action, CardInstance, CharacterDef, DeckList, Faction, FaceStats,
   GameState, LocationDef, PlayerId, PlayerState, Pos, Sanctity,
 } from "./types.ts";
-import { RULES } from "./types.ts";
+import { RULES } from "./config/rules.ts";
 import { shuffle } from "./rng.ts";
 
 // ---------- helpers ----------

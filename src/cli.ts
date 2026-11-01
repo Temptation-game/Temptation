@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import type { CharacterDef, DeckList, GameState, LocationDef } from "./types.ts";
 import { apply, newGame } from "./engine.ts";
 import { parseCards } from "./cards.ts";
+import { DECK_SIZE } from "./config/match.ts";
 import { parseGlossary, unknownTerms } from "./glossary.ts";
 import { randomAction } from "./ai/random.ts";
 
@@ -22,7 +23,7 @@ for (const d of Object.values(defs)) {
 const town: LocationDef = load("../data/locations/town_square.json");
 
 const ids = Object.keys(defs);
-const cardList = Array.from({ length: 12 }, (_, i) => ids[i % ids.length]);
+const cardList = Array.from({ length: DECK_SIZE }, (_, i) => ids[i % ids.length]);
 const decks: [DeckList, DeckList] = [
   { faction: "church", cards: cardList },
   { faction: "court", cards: cardList },

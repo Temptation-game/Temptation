@@ -99,12 +99,3 @@ export type Action =
   | { type: "move"; uid: number; to: Pos }
   | { type: "flirt"; uid: number; target: number }
   | { type: "endTurn" };
-
-/** Tunable numbers from the core rules. */
-export const RULES = {
-  startingHand: 5,
-  handLimit: 6,
-  wineCap: 10,
-  secondPlayerFirstWine: 2,
-  actionsPerTurn: 3,
-} as const;

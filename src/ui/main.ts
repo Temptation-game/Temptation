@@ -10,6 +10,8 @@ import { parseCards } from "../cards.ts";
 import { aiAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
+import { DECK_SIZE } from "../config/match.ts";
+import { AI_DELAY_MS, ANIM, INSPECT_DELAY_MS } from "../config/ui.ts";
 import { couples, sentHome } from "./piles.ts";
 import { applySettings, loadSettings, saveSettings, type Settings } from "./settings.ts";
 import { animateArrive, animateDiscard, animateDraw, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
@@ -92,7 +94,6 @@ function humanTurn(): boolean {
   return state !== null && state.winner === null && !handOver && !animating && state.active === viewer();
 }
 
-const AI_DELAY_MS = 450;
 /** A ?seed=N URL parameter fixes the deal, first player and AI choices (for tests and bug reports). */
 const seedParam = new URLSearchParams(location.search).get("seed");
 const fixedSeed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : null;
@@ -102,7 +103,7 @@ const factionName = (f: Faction) => (f === "church" ? "Church" : "Court");
 function startGame(m: Mode): void {
   mode = m;
   const ids = Object.keys(defs);
-  const list = Array.from({ length: 12 }, (_, i) => ids[i % ids.length]);
+  const list = Array.from({ length: DECK_SIZE }, (_, i) => ids[i % ids.length]);
   const decks: [DeckList, DeckList] = [{ faction: "church", cards: list }, { faction: "court", cards: list }];
   const seed = fixedSeed ?? Date.now() % 1_000_000;
   aiRng = seed;
@@ -691,7 +692,7 @@ function animateDraws(player: PlayerId, hand: number[]): void {
   if (!from || fresh.length === 0) return;
   fresh.forEach((uid, i) => {
     const card = app.querySelector<HTMLElement>(`.hand [data-focus="hand:${uid}"]`);
-    if (card) animateDraw(card, from, i * 110);
+    if (card) animateDraw(card, from, i * ANIM.drawStagger);
   });
 }
 
@@ -830,7 +831,7 @@ function overlay(title: string, inner: string): HTMLElement {
 function inspectSoon(uid: number, shift: boolean): void {
   clearTimeout(inspectTimer);
   if (shift || shiftHeld) return;
-  inspectTimer = window.setTimeout(() => inspect(uid), 120);
+  inspectTimer = window.setTimeout(() => inspect(uid), INSPECT_DELAY_MS);
 }
 
 /** Show a field girl in the inspect area now, unless Shift keeps the current one. */

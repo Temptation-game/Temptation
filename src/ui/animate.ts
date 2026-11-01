@@ -2,6 +2,8 @@
  * Usage: await animateMove(fromSquare, toSquare);
  */
 
+import { ANIM } from "../config/ui.ts";
+
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
 
 /** Whether animations are off: the Accessibility setting, or the system preference when following it (see settings.ts). */
@@ -33,7 +35,7 @@ export async function animateMove(from: HTMLElement, to: HTMLElement): Promise<v
   from.style.zIndex = "5";
   await tile.animate(
     [{ transform: "translate(0, 0)" }, { transform: `translate(${b.x - a.x}px, ${b.y - a.y}px)` }],
-    { duration: 240, easing: "ease-in-out", fill: "forwards" },
+    { duration: ANIM.move, easing: "ease-in-out", fill: "forwards" },
   ).finished;
 }
 
@@ -54,7 +56,7 @@ export async function animateFlirt(
 
   const lean = aTile.animate(
     [{ transform: "translate(0, 0)" }, { transform: `translate(${dx}px, ${dy}px) rotate(${dx >= 0 ? 4 : -4}deg)`, offset: 0.45 }, { transform: "translate(0, 0)" }],
-    { duration: 520, easing: "ease-in-out" },
+    { duration: ANIM.flirtLean, easing: "ease-in-out" },
   );
   const heart = floater("heart", HEART, (a.x + t.x) / 2, (a.y + t.y) / 2);
   const pop = heart.animate(
@@ -63,18 +65,18 @@ export async function animateFlirt(
       { transform: "translate(-50%, -60%) scale(1.25)", opacity: 1, offset: 0.35 },
       { transform: "translate(-50%, -160%) scale(0.9)", opacity: 0 },
     ],
-    { duration: 900, easing: "ease-out", delay: 180 },
+    { duration: ANIM.heartPop, easing: "ease-out", delay: ANIM.heartDelay },
   );
   const blush = [{ boxShadow: "0 0 0 0 #ff5fa200" }, { boxShadow: "0 0 18px 6px #ff5fa2cc" }, { boxShadow: "0 0 0 0 #ff5fa200" }];
-  aTile.animate(blush, { duration: 700, delay: 220 });
-  tTile.animate(blush, { duration: 700, delay: 220 });
+  aTile.animate(blush, { duration: ANIM.blush, delay: ANIM.blushDelay });
+  tTile.animate(blush, { duration: ANIM.blush, delay: ANIM.blushDelay });
   const losses = [[attacker, lossAttacker], [target, lossTarget]] as const;
   const numbers = losses.map(([sq, n]) => {
     const c = centre(sq);
     const el = floater("loss", `-${n}`, c.x, c.y - 10);
     return el.animate(
       [{ transform: "translate(-50%, 0)", opacity: 0 }, { transform: "translate(-50%, -12px)", opacity: 1, offset: 0.3 }, { transform: "translate(-50%, -38px)", opacity: 0 }],
-      { duration: 900, delay: 300, easing: "ease-out" },
+      { duration: ANIM.lossNumber, delay: ANIM.lossNumberDelay, easing: "ease-out" },
     ).finished.then(() => el.remove());
   });
   await lean.finished;
@@ -85,7 +87,7 @@ export async function animateFlirt(
   }
   const fades = leaving.map((sq) => sq.querySelector<HTMLElement>(".tile")?.animate(
     [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.6)" }],
-    { duration: 320, easing: "ease-in", fill: "forwards" },
+    { duration: ANIM.leave, easing: "ease-in", fill: "forwards" },
   ).finished);
   await Promise.all([pop.finished.then(() => heart.remove()), ...numbers, ...fades]);
 }
@@ -100,7 +102,7 @@ export function animateEnter(square: HTMLElement): void {
       { transform: "translateY(0) scale(0.96)", opacity: 1, offset: 0.7 },
       { transform: "translateY(0) scale(1)", opacity: 1 },
     ],
-    { duration: 340, easing: "ease-out" },
+    { duration: ANIM.enter, easing: "ease-out" },
   );
 }
 
@@ -116,7 +118,7 @@ export async function animateDiscard(card: HTMLElement): Promise<void> {
       { opacity: 1, transform: "translateY(0) rotate(0deg) scale(1)", width: `${width}px`, marginRight: "0px", paddingLeft: "", paddingRight: "", borderLeftWidth: "", borderRightWidth: "" },
       { opacity: 0, transform: "translateY(40px) rotate(6deg) scale(0.92)", width: "0px", marginRight: `${-gap}px`, paddingLeft: "0px", paddingRight: "0px", borderLeftWidth: "0px", borderRightWidth: "0px" },
     ],
-    { duration: 380, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
+    { duration: ANIM.discard, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
   ).finished;
 }
 
@@ -130,18 +132,18 @@ async function marriageGlow(a: HTMLElement, b: HTMLElement, ca: { x: number; y: 
   const heart = floater("heart wedding", HEART, (ca.x + cb.x) / 2, (ca.y + cb.y) / 2);
   const rise = heart.animate(
     [{ transform: "translate(-50%, -50%) scale(0.4)", opacity: 0 }, { transform: "translate(-50%, -90%) scale(1.5)", opacity: 1 }],
-    { duration: 700, easing: "ease-out", fill: "forwards" },
+    { duration: ANIM.weddingGlow, easing: "ease-out", fill: "forwards" },
   );
   await Promise.all([
-    a.animate(glow, { duration: 700, fill: "forwards" }).finished,
-    b.animate(glow, { duration: 700, fill: "forwards" }).finished,
+    a.animate(glow, { duration: ANIM.weddingGlow, fill: "forwards" }).finished,
+    b.animate(glow, { duration: ANIM.weddingGlow, fill: "forwards" }).finished,
     rise.finished,
   ]);
   const out = [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.85)" }];
   await Promise.all([
-    a.animate(out, { duration: 450, easing: "ease-in", fill: "forwards" }).finished,
-    b.animate(out, { duration: 450, easing: "ease-in", fill: "forwards" }).finished,
-    heart.animate([{ opacity: 1 }, { opacity: 0, transform: "translate(-50%, -140%) scale(1.6)" }], { duration: 450, fill: "forwards" }).finished,
+    a.animate(out, { duration: ANIM.weddingFade, easing: "ease-in", fill: "forwards" }).finished,
+    b.animate(out, { duration: ANIM.weddingFade, easing: "ease-in", fill: "forwards" }).finished,
+    heart.animate([{ opacity: 1 }, { opacity: 0, transform: "translate(-50%, -140%) scale(1.6)" }], { duration: ANIM.weddingFade, fill: "forwards" }).finished,
   ]);
   heart.remove();
 }
@@ -160,7 +162,7 @@ export function animateArrive(card: HTMLElement, from: DOMRect): void {
       { transform: "translate(0, -18px) scale(1.04) rotate(2deg)", opacity: 1, boxShadow: "0 0 22px 6px #ff5fa2aa", offset: 0.75 },
       { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1, boxShadow: "0 4px 14px #0008" },
     ],
-    { duration: 650, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" },
+    { duration: ANIM.arrive, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" },
   ).finished.then(() => { card.style.zIndex = ""; });
 }
 
@@ -176,6 +178,6 @@ export function animateDraw(card: HTMLElement, from: DOMRect, delay: number): vo
       { transform: `translate(${dx * 0.4}px, ${dy * 0.4 - 30}px) scale(0.85) rotate(-2deg)`, opacity: 1, offset: 0.45 },
       { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
     ],
-    { duration: 480, delay, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)", fill: "backwards" },
+    { duration: ANIM.draw, delay, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)", fill: "backwards" },
   );
 }

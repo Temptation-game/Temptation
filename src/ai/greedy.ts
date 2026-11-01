@@ -6,6 +6,7 @@
 import type { Action, GameState, PlayerId } from "../types.ts";
 import { apply, legalActions } from "../engine.ts";
 import { next } from "../rng.ts";
+import { AI } from "../config/ai.ts";
 
 /** Material score from a player's point of view: field girls > hand girls, plus Composure and closeness to the enemy. */
 export function evaluate(s: GameState, me: PlayerId): number {
@@ -59,7 +60,7 @@ function rollout(s: GameState, me: PlayerId, rng: number): number {
 }
 
 /** Hard difficulty: the best few one-ply candidates are each played out through the opponent's reply. */
-export function lookaheadAction(s: GameState, rng: number, candidates = 6): [Action, number] {
+export function lookaheadAction(s: GameState, rng: number, candidates: number = AI.hardCandidates): [Action, number] {
   const me = s.active;
   const scored = legalActions(s).map((a) => {
     const after = a.type === "endTurn" ? s : apply(s, a);
@@ -87,7 +88,7 @@ export function aiAction(s: GameState, rng: number, difficulty: Difficulty): [Ac
   if (difficulty === "hard") return lookaheadAction(s, rng);
   if (difficulty === "normal") return greedyAction(s, rng);
   const [roll, r1] = next(rng);
-  if (roll < 0.2) {
+  if (roll < AI.easyRandomMove) {
     const acts = legalActions(s).filter((a) => a.type !== "endPlay" || legalActions(s).length === 1);
     const [pick, r2] = next(r1);
     return [acts[Math.floor(pick * acts.length)], r2];
@@ -96,6 +97,6 @@ export function aiAction(s: GameState, rng: number, difficulty: Difficulty): [Ac
   return bestBy(s, r1, (after) => {
     const [n, nn] = next(noise);
     noise = nn;
-    return evaluate(after, me) + (n - 0.5) * 4;
+    return evaluate(after, me) + (n - 0.5) * AI.easyNoise;
   });
 }

@@ -2,6 +2,7 @@
 import type { CharacterDef, Faction } from "../types.ts";
 import type { GlossaryEntry } from "../glossary.ts";
 import { splitTerms, stripMarkers, termsIn } from "../glossary.ts";
+import { FLIP_HALF_MS } from "../config/ui.ts";
 
 let glossary: GlossaryEntry[] = [];
 
@@ -148,8 +149,6 @@ export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Fa
   return card;
 }
 
-/** Duration of each half of the flip animation; matches .flip-inner's transition in style.css. */
-const FLIP_HALF_MS = 160;
 
 /** A compact square tile for a character on the field; decorative, the square's button carries the label. */
 export function tileEl(def: CharacterDef, faction: Faction, composure: number, resting: boolean): HTMLElement {
