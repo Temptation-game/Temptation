@@ -59,6 +59,8 @@ As a part of your Act phase, you can have your character act (a character is you
 
 Actions can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
 
+A character does not act same turn as she enters unless she is *Bold*.
+
 A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. Next time she is played, she enters with full Composure\*.
 
 A Character can only be *converted* through Specials.
