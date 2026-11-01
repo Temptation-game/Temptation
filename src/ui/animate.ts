@@ -104,17 +104,19 @@ export function animateEnter(square: HTMLElement): void {
   );
 }
 
-/** A discarded hand card tips over, sinks and fades. */
+/** A discarded hand card sinks and fades while its slot closes, so the other cards slide together without a jump. */
 export async function animateDiscard(card: HTMLElement): Promise<void> {
   if (reducedMotion()) return;
-  card.style.zIndex = "5";
+  const width = card.getBoundingClientRect().width;
+  const gap = parseFloat(getComputedStyle(card.parentElement!).columnGap) || 0;
+  card.style.overflow = "hidden";
+  card.style.pointerEvents = "none";
   await card.animate(
     [
-      { transform: "translateY(0) rotate(0deg)", opacity: 1 },
-      { transform: "translateY(-14px) rotate(-4deg)", opacity: 1, offset: 0.25 },
-      { transform: "translateY(90px) rotate(14deg)", opacity: 0 },
+      { opacity: 1, transform: "translateY(0) rotate(0deg) scale(1)", width: `${width}px`, marginRight: "0px", paddingLeft: "", paddingRight: "", borderLeftWidth: "", borderRightWidth: "" },
+      { opacity: 0, transform: "translateY(40px) rotate(6deg) scale(0.92)", width: "0px", marginRight: `${-gap}px`, paddingLeft: "0px", paddingRight: "0px", borderLeftWidth: "0px", borderRightWidth: "0px" },
     ],
-    { duration: 420, easing: "ease-in", fill: "forwards" },
+    { duration: 380, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
   ).finished;
 }
 
