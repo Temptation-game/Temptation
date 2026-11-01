@@ -12,7 +12,7 @@ export function setGlossary(g: GlossaryEntry[]): void {
 
 /** Portrait URL for a card face; files follow <id>_<nun|vampire>.webp. */
 export function portraitUrl(def: CharacterDef, faction: Faction): string {
-  return `/portraits/${def.id}_${faction === "church" ? "nun" : "vampire"}.webp`;
+  return `portraits/${def.id}_${faction === "church" ? "nun" : "vampire"}.webp`;
 }
 
 const SVG = {
