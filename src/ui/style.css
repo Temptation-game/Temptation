@@ -43,8 +43,8 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 /* ---------- match layout ---------- */
 .match {
   height: 100%; display: grid; gap: 16px; padding: 16px;
-  grid-template-columns: 230px 1fr; grid-template-rows: 1fr auto;
-  grid-template-areas: "side board" "hand hand";
+  grid-template-columns: 230px 1fr 250px; grid-template-rows: 1fr auto;
+  grid-template-areas: "side board inspect" "hand hand hand";
 }
 .sidebar {
   grid-area: side; display: flex; flex-direction: column; gap: 8px;
@@ -113,7 +113,6 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 }
 .card .cost span { transform: rotate(-45deg); font-weight: bold; }
 .hurt { color: #ff8a8a; }
-.card.preview { position: fixed; z-index: 50; --card-w: 200px; pointer-events: none; }
 
 .icon { width: 15px; height: 15px; }
 .icon-charm { fill: var(--flirt); }
@@ -170,8 +169,6 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
   font-size: 12px; line-height: 1.3; font-style: normal; text-align: left; pointer-events: none;
 }
 .card .term:hover .tip, .card .term:focus .tip, .card .term:focus-visible .tip { display: block; }
-.card.preview { pointer-events: auto; }
-.card.preview .text { overflow: visible; }
 .detail-card { display: flex; justify-content: center; padding: 30px 0 4px; }
 .detail-card .card { --card-w: 240px; font-size: 14px; }
 .detail-card .card .text { font-size: 14px; }
@@ -187,3 +184,11 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .card button.term { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: inherit; }
 .detail-card .card:focus { outline: 3px solid #ffffff; }
 .detail-card .card { text-align: left; }
+
+/* ---------- inspect area ---------- */
+.inspect { grid-area: inspect; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.inspect-card { --card-w: 220px; min-height: 330px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.inspect-card .card { text-align: left; }
+.inspect-card .card .text { font-size: 13px; }
+.inspect-card .tip { left: 50%; transform: translateX(-50%); }
+.inspect .hint { margin: 0; font-size: 11px; color: var(--muted); }

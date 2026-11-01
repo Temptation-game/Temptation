@@ -32,7 +32,10 @@ let lastLogLen = 0;
 let lastPhaseKey = "";
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
-let previewTimer: number | undefined;
+/** Field girl shown in the inspect area beside the board. */
+let inspected: number | null = null;
+let inspectTimer: number | undefined;
+let shiftHeld = false;
 
 const announcer = document.getElementById("announcer")!;
 
@@ -74,6 +77,7 @@ function startGame(m: Mode): void {
   lastLogLen = 0;
   lastPhaseKey = "";
   pendingFocus = null;
+  inspected = null;
   selected = null;
   panel = null;
   handOver = m.kind === "hotseat";
@@ -280,7 +284,7 @@ function onFieldKey(e: KeyboardEvent): void {
 
 /** Draw the match screen: sidebar, field, hand and overlays. */
 function render(): void {
-  hidePreview();
+  clearTimeout(inspectTimer);
   const s = state!;
   const focusKey = pendingFocus ?? (document.activeElement as HTMLElement | null)?.dataset?.focus ?? null;
   pendingFocus = null;
@@ -315,6 +319,10 @@ function render(): void {
         <div class="grid" role="group" style="--cols:${w}"
           aria-label="Field, Town Square: columns A to ${String.fromCharCode(64 + w)} from west to east, rows 1 to ${h} from top to bottom. Use the arrow keys to move between squares, and I for card details."></div>
       </main>
+      <aside class="inspect" aria-hidden="true">
+        <div class="inspect-card"></div>
+        <p class="hint">Press Shift to keep open</p>
+      </aside>
       <section class="hand" aria-label="Your hand, ${mine.hand.length} cards. Press I on a card for details."></section>
     </div>`;
 
@@ -337,16 +345,16 @@ function render(): void {
       const tile = tileEl(s.defs[c.defId], s.players[c.controller].faction, c.composure, c.controller === s.active && !canAct(s, c));
       if (selected?.uid === c.uid) tile.classList.add("selected");
       sq.append(tile);
-      sq.addEventListener("mouseenter", () => showPreview(sq, c.uid));
-      sq.addEventListener("mouseleave", hidePreviewSoon);
-      sq.addEventListener("focus", () => showPreview(sq, c.uid));
-      sq.addEventListener("blur", hidePreview);
+      sq.addEventListener("mouseenter", (e) => inspectSoon(c.uid, e.shiftKey));
+      sq.addEventListener("focus", () => inspect(c.uid));
     }
     sq.addEventListener("focus", () => { fieldFocus = { x, y }; });
     sq.addEventListener("click", () => onSquareClick(x, y));
     grid.append(sq);
   }));
   grid.addEventListener("keydown", onFieldKey);
+  grid.addEventListener("mouseleave", () => clearTimeout(inspectTimer));
+  drawInspect();
 
   const hand = app.querySelector<HTMLElement>(".hand")!;
   hand.style.setProperty("--n", String(Math.max(2, mine.hand.length)));
@@ -440,33 +448,37 @@ function renderPanel(p: "history" | "deck"): HTMLElement {
   return list;
 }
 
-/** Full-card preview next to a field square; decorative, the square's label carries the same information. */
-function showPreview(anchor: HTMLElement, uid: number): void {
-  hidePreview();
-  const s = state!;
-  const c = s.cards[uid];
-  const el = cardEl(s.defs[c.defId], s.players[c.controller].faction, { composure: c.composure, mode: "preview" });
-  el.addEventListener("mouseenter", () => clearTimeout(previewTimer));
-  el.addEventListener("mouseleave", hidePreviewSoon);
-  el.classList.add("preview");
-  const r = anchor.getBoundingClientRect();
-  const left = r.right + 12 + 200 > window.innerWidth ? r.left - 212 : r.right + 12;
-  el.style.left = `${left}px`;
-  el.style.top = `${Math.max(8, Math.min(r.top - 40, window.innerHeight - 320))}px`;
-  document.body.append(el);
+/** Show a field girl in the inspect area after a short delay, unless Shift keeps the current one. */
+function inspectSoon(uid: number, shift: boolean): void {
+  clearTimeout(inspectTimer);
+  if (shift || shiftHeld) return;
+  inspectTimer = window.setTimeout(() => inspect(uid), 120);
 }
 
-/** Remove the hover preview. */
-function hidePreview(): void {
-  clearTimeout(previewTimer);
-  document.querySelectorAll(".card.preview").forEach((e) => e.remove());
+/** Show a field girl in the inspect area now, unless Shift keeps the current one. */
+function inspect(uid: number): void {
+  if (shiftHeld && inspected !== null) return;
+  inspected = uid;
+  drawInspect();
 }
 
-/** Remove the hover preview after a short grace period, so the cursor can move onto it. */
-function hidePreviewSoon(): void {
-  clearTimeout(previewTimer);
-  previewTimer = window.setTimeout(hidePreview, 150);
+/** Redraw the inspect area from the current state; decorative, the square labels carry the same information. */
+function drawInspect(): void {
+  const box = app.querySelector<HTMLElement>(".inspect-card");
+  if (!box || !state) return;
+  box.replaceChildren();
+  if (inspected === null) {
+    box.innerHTML = '<p class="muted">Hover a girl on the field to inspect her.</p>';
+    return;
+  }
+  const c = state.cards[inspected];
+  const composure = c.zone === "field" ? c.composure : undefined;
+  box.append(cardEl(state.defs[c.defId], state.players[c.controller].faction, { composure, mode: "preview" }));
 }
+
+document.addEventListener("keydown", (e) => { if (e.key === "Shift") shiftHeld = true; });
+document.addEventListener("keyup", (e) => { if (e.key === "Shift") shiftHeld = false; });
+window.addEventListener("blur", () => { shiftHeld = false; });
 
 /** The card in the keyboard detail dialog, with focusable glossary terms; returns the element to focus. */
 function renderDetail(uid: number): HTMLElement {
