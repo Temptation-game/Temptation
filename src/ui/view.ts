@@ -1,5 +1,14 @@
 /** DOM builders for cards and field tiles; no game logic lives here. */
 import type { CharacterDef, Faction } from "../types.ts";
+import type { GlossaryEntry } from "../glossary.ts";
+import { splitTerms, termsIn } from "../glossary.ts";
+
+let glossary: GlossaryEntry[] = [];
+
+/** Set the glossary used to mark terms in card text. */
+export function setGlossary(g: GlossaryEntry[]): void {
+  glossary = g;
+}
 
 /** Portrait URL for a card face; files follow <id>_<nun|vampire>.webp. */
 export function portraitUrl(def: CharacterDef, faction: Faction): string {
@@ -41,15 +50,50 @@ function html(markup: string): HTMLElement {
   return t.content.firstElementChild as HTMLElement;
 }
 
-/** A full 2:3 card. As a button (hand) it carries a spoken label; otherwise (preview) it is hidden from screen readers. */
-export function cardEl(def: CharacterDef, faction: Faction, composure?: number, label?: string): HTMLElement {
+/** Definitions of the glossary terms used on a card face, as one sentence list for screen readers. */
+export function cardTerms(def: CharacterDef, faction: Faction): string {
+  return termsIn(def.faces[faction].text.join(" "), glossary).map((g) => `${g.term}: ${g.definition}`).join(" ");
+}
+
+let tipCount = 0;
+
+/** Card text with glossary terms wrapped in tooltip spans; focusable terms are reachable by keyboard. */
+function richText(text: string, focusable: boolean): string {
+  return splitTerms(text, glossary).map((r) => {
+    if (!r.term) return esc(r.text);
+    const id = `tip-${++tipCount}`;
+    const tip = `<span class="tip" id="${id}" role="tooltip" aria-hidden="true">${esc(r.term.term)}: ${esc(r.term.definition)}</span>`;
+    return focusable
+      ? `<button type="button" class="term" aria-describedby="${id}">${esc(r.text)}${tip}</button>`
+      : `<span class="term">${esc(r.text)}${tip}</span>`;
+  }).join("");
+}
+
+export interface CardOptions {
+  /** Current Composure; the face's full value when omitted. */
+  composure?: number;
+  /** button: hand card with a spoken label; preview: decorative hover copy; detail: readable card in the info panel. */
+  mode: "button" | "preview" | "detail";
+  label?: string;
+}
+
+/** A full card (2:3, taller when the text needs it). */
+export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): HTMLElement {
   const f = def.faces[faction];
+  const focusable = opts.mode === "detail";
   const text = f.text.map((t) =>
-    f.unknown.includes(t) ? `<span class="unimpl" title="not implemented in the engine yet">${esc(t)}</span>` : esc(t),
+    f.unknown.includes(t)
+      ? `<span class="unimpl" title="not implemented in the engine yet">${richText(t, focusable)}${focusable ? '<span class="sr-only"> (not implemented yet)</span>' : ""}</span>`
+      : richText(t, focusable),
   ).join(" ");
-  const comp = composure ?? f.composure;
-  const tag = label === undefined ? "div" : "button";
-  const a11y = label === undefined ? 'aria-hidden="true"' : `type="button" aria-label="${esc(label)}"`;
+  const comp = opts.composure ?? f.composure;
+  const tag = opts.mode === "button" ? "button" : "div";
+  const description = cardTerms(def, faction);
+  const a11y = {
+    button: `type="button" aria-label="${esc(opts.label ?? cardLabel(def, faction))}"${description ? ` aria-description="${esc(description)}"` : ""}`,
+    preview: 'aria-hidden="true"',
+    detail: `tabindex="-1" role="group" aria-label="${esc(f.name)}, ${sideName(faction)}, cost ${f.cost} ${faction === "church" ? "Wine" : "Blood"}, Charm ${f.charm}, Composure ${comp} of ${f.composure}"`,
+  }[opts.mode];
   return html(`
     <${tag} class="card ${faction}" ${a11y}>
       <span class="cost"><span>${f.cost}</span></span>
