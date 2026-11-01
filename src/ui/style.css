@@ -227,3 +227,9 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .side-switch button[data-side="court"] { background: #500a0a; border-color: #9e2828; }
 .side-switch button[data-side="church"][aria-pressed="true"] { border-color: #eccf00; box-shadow: 0 0 0 1px #eccf00; }
 .side-switch button[data-side="court"][aria-pressed="true"] { border-color: #a2a8ab; box-shadow: 0 0 0 1px #a2a8ab; }
+
+/* ---------- animations and dialogs ---------- */
+.floater { position: fixed; z-index: 70; pointer-events: none; }
+.floater.heart svg { width: 44px; height: 44px; fill: var(--flirt); filter: drop-shadow(0 0 6px #ff5fa2aa); display: block; }
+.floater.loss { font-weight: bold; font-size: 20px; color: #ff8ab8; text-shadow: 0 1px 3px #000; }
+.dialog-buttons { display: flex; gap: 10px; justify-content: center; }

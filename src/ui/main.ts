@@ -3,12 +3,13 @@ import cardsMd from "../../cards.md?raw";
 import glossaryMd from "../../glossary.md?raw";
 import overviewMd from "../../overview.md?raw";
 import town from "../../data/locations/town_square.json";
-import type { Action, DeckList, Faction, GameState, LocationDef, PlayerId } from "../types.ts";
+import type { Action, DeckList, Faction, GameState, LocationDef, PlayerId, Pos } from "../types.ts";
 import { apply, canAct, concede, face, legalActions, newGame, occupant, opponent } from "../engine.ts";
 import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
+import { animateEnter, animateFlirt, animateMove } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
@@ -34,6 +35,10 @@ let lastLogLen = 0;
 let lastPhaseKey = "";
 /** Whether the history log is shown in the sidebar. */
 let historyOpen = false;
+/** True while a board animation runs; input and the AI wait for it. */
+let animating = false;
+/** Whether the surrender confirmation dialog is open. */
+let confirmingSurrender = false;
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
 /** Field girl shown in the inspect area beside the board. */
@@ -62,7 +67,7 @@ function viewer(): PlayerId {
 
 /** Whether the human may act right now. */
 function humanTurn(): boolean {
-  return state !== null && state.winner === null && !handOver && state.active === viewer();
+  return state !== null && state.winner === null && !handOver && !animating && state.active === viewer();
 }
 
 const AI_DELAY_MS = 450;
@@ -82,6 +87,8 @@ function startGame(m: Mode): void {
   lastPhaseKey = "";
   pendingFocus = null;
   inspected = null;
+  confirmingSurrender = false;
+  animating = false;
   selected = null;
   panel = null;
   handOver = m.kind === "hotseat";
@@ -89,16 +96,54 @@ function startGame(m: Mode): void {
   if (m.kind === "ai" && state.active !== m.human) scheduleAi();
 }
 
-/** Apply an action, clear selection, and hand over to the AI or the other hotseat player. */
-function act(a: Action): void {
-  const before = state!.active;
-  state = apply(state!, a);
-  selected = null;
-  if (state.winner === null && state.active !== before) {
-    if (mode.kind === "hotseat") handOver = true;
-    else if (state.active !== mode.human) scheduleAi();
+/** The field square button at a position. */
+const squareEl = (p: Pos) => app.querySelector<HTMLElement>(`[data-focus="sq:${p.x},${p.y}"]`);
+
+/** Animate an action on the current board, apply it, run `afterApply`, redraw, then play any entry animation. */
+async function perform(a: Action, afterApply: () => void): Promise<boolean> {
+  const id = matchId;
+  const prev = state!;
+  const next = apply(prev, a);
+  animating = true;
+  try {
+    if (a.type === "move") {
+      const from = squareEl(prev.cards[a.uid].pos!);
+      const to = squareEl(a.to);
+      if (from && to) await animateMove(from, to);
+    }
+    if (a.type === "flirt") {
+      const att = prev.cards[a.uid];
+      const tgt = prev.cards[a.target];
+      const leaving = [att, tgt].filter((c) => next.cards[c.uid].zone !== "field").map((c) => squareEl(c.pos!)!);
+      const aSq = squareEl(att.pos!);
+      const tSq = squareEl(tgt.pos!);
+      if (aSq && tSq) await animateFlirt(aSq, tSq, face(prev, a.target).charm, face(prev, a.uid).charm, leaving);
+    }
+  } finally {
+    animating = false;
   }
+  if (id !== matchId) return false;
+  state = next;
+  afterApply();
   render();
+  if (a.type === "play") {
+    const sq = squareEl(a.at);
+    if (sq) animateEnter(sq);
+  }
+  return true;
+}
+
+/** Apply an action, clear selection, and hand over to the AI or the other hotseat player. */
+async function act(a: Action): Promise<void> {
+  if (animating) return;
+  const before = state!.active;
+  selected = null;
+  await perform(a, () => {
+    if (state!.winner === null && state!.active !== before) {
+      if (mode.kind === "hotseat") handOver = true;
+      else if (state!.active !== mode.human) scheduleAi();
+    }
+  });
 }
 
 /** Queue one AI step for the current match. */
@@ -110,11 +155,13 @@ function scheduleAi(): void {
 /** Let the AI take one action, then reschedule itself while it is still the AI's turn. */
 function aiStep(id: number): void {
   if (id !== matchId || !state || state.winner !== null || mode.kind !== "ai" || state.active === mode.human) return;
+  if (animating) return scheduleAi();
   const [a, next] = greedyAction(state, aiRng);
   aiRng = next;
-  state = apply(state, a);
-  render();
-  if (state.winner === null && state.active !== mode.human) scheduleAi();
+  const human = mode.human;
+  void perform(a, () => {
+    if (state!.winner === null && state!.active !== human) scheduleAi();
+  });
 }
 
 /** Legal actions belonging to the current selection. */
@@ -443,7 +490,7 @@ function render(): void {
   if (log) log.scrollTop = log.scrollHeight;
   app.querySelector("#deck")!.addEventListener("click", () => { panel = "deck"; render(); });
   app.querySelector("#surrender")!.addEventListener("click", () => {
-    if (s.winner === null && confirm("Surrender this match?")) { state = concede(s, me); render(); }
+    if (s.winner === null) { confirmingSurrender = true; render(); }
   });
 
   announceChanges(s);
@@ -455,6 +502,19 @@ function render(): void {
     dialogFocus = overlay(`${factionName(s.players[s.active].faction)}'s turn`, `<p>Pass the device, then continue.</p>
       <button type="button" id="ready">Continue</button>`);
     app.querySelector("#ready")!.addEventListener("click", () => { handOver = false; pendingFocus = "btn:end"; render(); });
+  }
+  if (confirmingSurrender && s.winner === null) {
+    dialogFocus = overlay("Surrender this match?", `<p>The match ends and your opponent wins.</p>
+      <div class="dialog-buttons"><button type="button" id="keep-playing">Keep playing</button>
+      <button type="button" id="confirm-surrender" class="danger">Surrender</button></div>`);
+    const cancel = () => { confirmingSurrender = false; pendingFocus = "btn:surrender"; render(); };
+    app.querySelector("#keep-playing")!.addEventListener("click", cancel);
+    app.querySelector("#confirm-surrender")!.addEventListener("click", () => {
+      confirmingSurrender = false;
+      state = concede(state!, me);
+      render();
+    });
+    app.querySelector(".overlay")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); cancel(); } });
   }
   if (s.winner !== null) {
     const youWon = mode.kind === "ai" ? (s.winner === mode.human ? "You win!" : "The AI wins.") : "";
@@ -576,6 +636,11 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   detail = { uid, returnTo: key };
   render();
+});
+
+/** Ask for confirmation before closing or reloading the tab during an unfinished match. */
+window.addEventListener("beforeunload", (e) => {
+  if (state && state.winner === null) e.preventDefault();
 });
 
 /** Escape clears the current selection. */
