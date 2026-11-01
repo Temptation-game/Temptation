@@ -10,17 +10,27 @@ export interface Pos {
   y: number;
 }
 
-/** Stats of one side of a Character card. */
+/** Engine-implemented abilities, recognised from card description sentences. */
+export type AbilityId = "adventurous" | "convertInsteadOfTempt";
+
+/** Stats and text of one side of a Character card. */
 export interface FaceStats {
   name: string;
+  cost: number;
   charm: number;
   composure: number;
+  /** Description sentences as written in cards.md. */
+  text: string[];
+  /** Abilities the engine recognised in the text. */
+  abilities: AbilityId[];
+  /** Sentences with no engine implementation yet; shown on the card but without effect. */
+  unknown: string[];
 }
 
-/** Static definition of a Character card, as authored in data files. */
+/** Static definition of a Character card, as authored in cards.md. */
 export interface CharacterDef {
   id: string;
-  cost: number;
+  name: string;
   faces: Record<Faction, FaceStats>;
 }
 
@@ -49,6 +59,8 @@ export interface CardInstance {
   zone: Zone;
   composure: number;
   pos: Pos | null;
+  /** Global turn count at which she last entered the field. */
+  enteredOn: number;
 }
 
 export interface PlayerState {
@@ -70,6 +82,8 @@ export interface GameState {
   players: [PlayerState, PlayerState];
   married: number[];
   firstPlayer: PlayerId;
+  /** Global turn count, both players' turns included. */
+  turn: number;
   active: PlayerId;
   phase: Phase;
   actionsLeft: number;

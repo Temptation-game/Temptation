@@ -2,7 +2,7 @@
  * Usage: let s = newGame(defs, location, decks, seed); s = apply(s, legalActions(s)[0]);
  */
 import type {
-  Action, CardInstance, CharacterDef, DeckList, Faction, FaceStats,
+  AbilityId, Action, CardInstance, CharacterDef, DeckList, Faction, FaceStats,
   GameState, LocationDef, PlayerId, PlayerState, Pos, Sanctity,
 } from "./types.ts";
 import { RULES } from "./types.ts";
@@ -48,6 +48,16 @@ function fieldOf(s: GameState, p: PlayerId): CardInstance[] {
   return Object.values(s.cards).filter((c) => c.zone === "field" && c.controller === p);
 }
 
+/** Whether the card's current face has an ability. */
+export function hasAbility(s: GameState, uid: number, id: AbilityId): boolean {
+  return face(s, uid).abilities.includes(id);
+}
+
+/** Characters cannot act on the turn they entered unless Adventurous. */
+export function canAct(s: GameState, c: CardInstance): boolean {
+  return c.enteredOn !== s.turn || hasAbility(s, c.uid, "adventurous");
+}
+
 /** Whether two squares are orthogonally adjacent. */
 function adjacent(a: Pos, b: Pos): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
@@ -83,7 +93,7 @@ export function newGame(
     const ids: number[] = [];
     for (const defId of deck.cards) {
       if (!defs[defId]) throw new Error(`unknown card '${defId}'`);
-      cards[uid] = { uid, defId, owner: p, controller: p, zone: "deck", composure: 0, pos: null };
+      cards[uid] = { uid, defId, owner: p, controller: p, zone: "deck", composure: 0, pos: null, enteredOn: -1 };
       ids.push(uid++);
     }
     rng = shuffle(ids, rng);
@@ -94,7 +104,7 @@ export function newGame(
 
   const s: GameState = {
     defs, squares: parseLocation(location), cards, players, married: [],
-    firstPlayer, active: firstPlayer, phase: "play", actionsLeft: 0,
+    firstPlayer, turn: 0, active: firstPlayer, phase: "play", actionsLeft: 0,
     winner: null, rng, log: [],
   };
   startTurn(s);
@@ -107,6 +117,7 @@ export function newGame(
 function startTurn(s: GameState): void {
   const p = s.players[s.active];
   p.turnNumber += 1;
+  s.turn += 1;
   const drawn = p.deck.shift();
   if (drawn !== undefined) {
     p.hand.push(drawn);
@@ -143,7 +154,7 @@ export function legalActions(s: GameState): Action[] {
       if (sq === want && !occupant(s, { x, y })) free.push({ x, y });
     }));
     for (const uid of p.hand) {
-      if (s.defs[s.cards[uid].defId].cost > p.wine) continue;
+      if (face(s, uid).cost > p.wine) continue;
       for (const at of free) out.push({ type: "play", uid, at });
     }
     return out;
@@ -152,6 +163,7 @@ export function legalActions(s: GameState): Action[] {
   const out: Action[] = [{ type: "endTurn" }];
   if (s.actionsLeft <= 0) return out;
   for (const c of fieldOf(s, me)) {
+    if (!canAct(s, c)) continue;
     for (const q of neighbours(s, c.pos!)) {
       const other = occupant(s, q);
       if (!other) out.push({ type: "move", uid: c.uid, to: q });
@@ -185,11 +197,12 @@ export function apply(state: GameState, action: Action): GameState {
     }
     case "play": {
       const c = s.cards[action.uid];
-      p.wine -= s.defs[c.defId].cost;
+      p.wine -= face(s, c.uid).cost;
       p.hand = p.hand.filter((u) => u !== c.uid);
       c.zone = "field";
       c.pos = { ...action.at };
       c.composure = face(s, c.uid).composure;
+      c.enteredOn = s.turn;
       s.log.push(`P${me} plays ${face(s, c.uid).name} at (${c.pos.x},${c.pos.y})`);
       break;
     }
@@ -244,9 +257,13 @@ function resolveFlirt(s: GameState, attacker: number, target: number): void {
   }
 }
 
-/** Remove a character from the field into the opposing player's hand. */
+/** Remove a character from the field into the opposing player's hand, unless she converts instead. */
 function tempt(s: GameState, c: CardInstance): void {
   const to = opponent(c.controller);
+  if (hasAbility(s, c.uid, "convertInsteadOfTempt")) {
+    convert(s, c);
+    return;
+  }
   s.log.push(`${face(s, c.uid).name} is tempted to P${to}`);
   c.controller = to;
   c.zone = "hand";
@@ -255,9 +272,25 @@ function tempt(s: GameState, c: CardInstance): void {
   s.players[to].hand.push(c.uid);
 }
 
+/** Flip a character to the other side in place, restoring the new face's full Composure. */
+function convert(s: GameState, c: CardInstance): void {
+  c.controller = opponent(c.controller);
+  c.composure = face(s, c.uid).composure;
+  s.log.push(`${face(s, c.uid).name} converts to P${c.controller}`);
+}
+
 /** Remove a character from the game for good. */
 function marry(s: GameState, c: CardInstance): void {
   c.zone = "married";
   c.pos = null;
   s.married.push(c.uid);
+}
+
+/** A player surrenders; available to the UI at any time, never offered to AIs as a legal action. */
+export function concede(state: GameState, p: PlayerId): GameState {
+  if (state.winner !== null) return state;
+  const s = structuredClone(state);
+  s.winner = opponent(p);
+  s.log.push(`P${p} surrenders: P${s.winner} wins`);
+  return s;
 }

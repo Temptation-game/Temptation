@@ -4,14 +4,18 @@
 import { readFileSync } from "node:fs";
 import type { CharacterDef, DeckList, GameState, LocationDef } from "./types.ts";
 import { apply, newGame } from "./engine.ts";
+import { parseCards } from "./cards.ts";
 import { randomAction } from "./ai/random.ts";
 
 const MAX_STEPS = 2000;
 
 const load = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
-const defs: Record<string, CharacterDef> = Object.fromEntries(
-  (load("../data/characters.json") as CharacterDef[]).map((d) => [d.id, d]),
-);
+const defs: Record<string, CharacterDef> = parseCards(readFileSync(new URL("../cards.md", import.meta.url), "utf8"));
+for (const d of Object.values(defs)) {
+  for (const [side, fc] of Object.entries(d.faces)) {
+    for (const u of fc.unknown) console.log(`unimplemented (${d.name}, ${side}): ${u}`);
+  }
+}
 const town: LocationDef = load("../data/locations/town_square.json");
 
 const ids = Object.keys(defs);
