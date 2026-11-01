@@ -18,7 +18,8 @@
   --muted: #9a958e;
   --flirt: #ff5fa2;
   --title-font: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --card-w: 168px;
+  /* Hand card width shrinks on short windows so the board keeps most of the height. */
+  --card-w: clamp(104px, calc(25vh - 50px), 168px);
 }
 
 * { box-sizing: border-box; }
@@ -100,10 +101,10 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
   box-shadow: 0 4px 14px #0008; user-select: none;
 }
 .card .portrait { width: 100%; aspect-ratio: 1; object-fit: cover; border: 3px solid var(--secondary); border-radius: 3px; }
-.card .name { font-family: var(--title-font); font-style: italic; color: var(--highlight); font-size: 16px; }
-.card .text { flex: 1; font-size: 12px; line-height: 1.3; }
+.card .name { font-family: var(--title-font); font-style: italic; color: var(--highlight); font-size: clamp(12px, calc(var(--card-w) * 0.095), 16px); }
+.card .text { flex: 1; font-size: clamp(9px, calc(var(--card-w) * 0.072), 12px); line-height: 1.3; }
 .card .unimpl { text-decoration: underline dashed var(--muted); color: var(--muted); }
-.card .stats { display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; }
+.card .stats { display: flex; justify-content: space-between; font-weight: bold; font-size: clamp(12px, calc(var(--card-w) * 0.095), 16px); }
 .card .stat { display: flex; align-items: center; gap: 3px; }
 .card .cost {
   position: absolute; top: -10px; right: -10px; width: 32px; height: 32px;
@@ -120,7 +121,7 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 
 /* ---------- hand ---------- */
 .hand {
-  grid-area: hand; display: flex; justify-content: center; align-items: flex-end; gap: 12px; min-height: 160px;
+  grid-area: hand; display: flex; justify-content: center; align-items: flex-end; gap: 12px;
   padding: 12px 0 4px; position: relative;
 }
 .hand .card { transition: transform 0.12s; cursor: pointer; }
@@ -239,3 +240,14 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
   border-color: #46424c; outline-color: #5a5560; cursor: default; aspect-ratio: 2 / 3;
 }
 .doc-page a { color: #f0b8d0; }
+
+/* ---------- short windows ---------- */
+@media (max-height: 780px) {
+  .match { gap: 10px; padding: 10px; }
+  .sidebar { gap: 5px; padding: 10px; }
+  .sidebar h1 { font-size: 20px; margin-bottom: 4px; }
+  .sidebar .status { font-size: 14px; gap: 1px; margin-bottom: 4px; }
+  .sidebar .muted { font-size: 12px; }
+  .sidebar button { padding: 5px 10px; }
+  .card .cost { width: 26px; height: 26px; top: -8px; right: -8px; font-size: 14px; }
+}

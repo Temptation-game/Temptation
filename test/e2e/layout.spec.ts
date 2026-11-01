@@ -48,3 +48,14 @@ test("the inspect area does not overlap the board", async ({ page }) => {
   const card = (await page.locator(".inspect-card .card").boundingBox())!;
   expect(card.x).toBeGreaterThanOrEqual(grid.x + grid.width);
 });
+
+for (const vp of [{ width: 1366, height: 700 }, { width: 1280, height: 600 }]) {
+  test(`short window ${vp.width}x${vp.height}: sidebar fits without scrolling and the board keeps most of the height`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await startAi(page, "Church");
+    const scrolls = await page.locator(".sidebar").evaluate((s) => s.scrollHeight > s.clientHeight + 1);
+    expect(scrolls).toBe(false);
+    const board = (await page.locator(".grid").boundingBox())!;
+    expect(board.height).toBeGreaterThanOrEqual(vp.height * 0.6);
+  });
+}
