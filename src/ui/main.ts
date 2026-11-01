@@ -2,10 +2,10 @@
 import cardsMd from "../../cards.md?raw";
 import town from "../../data/locations/town_square.json";
 import type { Action, DeckList, Faction, GameState, LocationDef, PlayerId } from "../types.ts";
-import { apply, canAct, concede, legalActions, newGame, occupant, opponent } from "../engine.ts";
+import { apply, canAct, concede, face, legalActions, newGame, occupant, opponent } from "../engine.ts";
 import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
-import { cardEl, tileEl } from "./view.ts";
+import { cardEl, cardLabel, squareName, tileEl } from "./view.ts";
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
 type Selection = { from: "hand" | "field"; uid: number } | null;
@@ -21,6 +21,24 @@ let panel: Panel = null;
 let handOver = false;
 let aiRng = 1;
 let matchId = 0;
+let fieldFocus = { x: 0, y: 0 };
+let pendingFocus: string | null = null;
+let lastLogLen = 0;
+let lastPhaseKey = "";
+
+const announcer = document.getElementById("announcer")!;
+
+/** Queue a message for screen readers via the persistent live region. */
+function announce(msg: string): void {
+  if (!msg) return;
+  const p = document.createElement("p");
+  p.textContent = msg;
+  announcer.append(p);
+  while (announcer.childElementCount > 20) announcer.firstElementChild!.remove();
+}
+
+/** Replace engine coordinates "(x,y)" with square names. */
+const named = (line: string) => line.replace(/\((\d+),(\d+)\)/g, (_, x, y) => squareName(Number(x), Number(y)));
 
 /** The player whose hand and controls are shown. */
 function viewer(): PlayerId {
@@ -45,6 +63,9 @@ function startGame(m: Mode): void {
   aiRng = seed;
   matchId += 1;
   state = newGame(defs, town as LocationDef, decks, seed, (seed % 2) as PlayerId);
+  lastLogLen = 0;
+  lastPhaseKey = "";
+  pendingFocus = null;
   selected = null;
   panel = null;
   handOver = m.kind === "hotseat";
@@ -96,11 +117,47 @@ function actionAt(x: number, y: number): Action | undefined {
     (a.type === "flirt" && target !== undefined && a.target === target.uid));
 }
 
+/** Name of the face a card currently shows. */
+const nameOf = (uid: number) => face(state!, uid).name;
+
+/** Spoken description of an action, including the predicted Composure loss for flirts. */
+function describe(a: Action): string {
+  switch (a.type) {
+    case "play": return `play ${nameOf(a.uid)} here`;
+    case "move": return `move ${nameOf(a.uid)} here`;
+    case "flirt": {
+      const mineLoss = face(state!, a.target).charm;
+      const theirLoss = face(state!, a.uid).charm;
+      return `${nameOf(a.uid)} flirts with ${nameOf(a.target)}: she loses ${theirLoss} Composure, yours loses ${mineLoss}`;
+    }
+    default: return a.type;
+  }
+}
+
+/** Announce what the current selection can do. */
+function announceSelection(): void {
+  if (!selected) return announce("Selection cleared.");
+  const acts = selectionActions();
+  if (acts.length === 0) return announce(`${nameOf(selected.uid)} selected. Nothing she can do right now.`);
+  const where = (a: Action) => {
+    if (a.type === "play") return squareName(a.at.x, a.at.y);
+    if (a.type === "move") return squareName(a.to.x, a.to.y);
+    if (a.type === "flirt") { const p = state!.cards[a.target].pos!; return `${nameOf(a.target)} on ${squareName(p.x, p.y)}`; }
+    return "";
+  };
+  const group = (t: Action["type"], verb: string) => {
+    const xs = acts.filter((a) => a.type === t).map(where);
+    return xs.length ? `${verb} ${xs.join(", ")}.` : "";
+  };
+  announce(`${nameOf(selected.uid)} selected. ${group("play", "Can enter on")} ${group("move", "Can move to")} ${group("flirt", "Can flirt with")}`);
+}
+
 /** Click on a hand card: discard it, or select it for playing. */
 function onHandClick(uid: number): void {
   if (!humanTurn()) return;
   if (state!.phase === "discard") return act({ type: "discard", uid });
   selected = selected?.uid === uid ? null : { from: "hand", uid };
+  announceSelection();
   render();
 }
 
@@ -112,6 +169,7 @@ function onSquareClick(x: number, y: number): void {
   const here = occupant(state!, { x, y });
   const mine = here && here.controller === state!.active && state!.phase === "act";
   selected = mine && selected?.uid !== here.uid ? { from: "field", uid: here.uid } : null;
+  announceSelection();
   render();
 }
 
@@ -120,30 +178,82 @@ function renderStart(): void {
   state = null;
   matchId += 1;
   app.innerHTML = `
-    <div class="start">
-      <img class="cover" src="/cover.webp" alt="Temptation cover">
-      <div class="menu">
-        <button data-mode="hotseat">Two players, one screen</button>
-        <button data-mode="church">Play Church against the AI</button>
-        <button data-mode="court">Play Court against the AI</button>
-      </div>
-    </div>`;
+    <main class="start">
+      <h1 class="sr-only">Temptation, a trading card game</h1>
+      <img class="cover" src="/cover.webp" alt="Cover art: a nun kisses the cheek of a blushing vampire in a moonlit forest.">
+      <nav class="menu" aria-label="Game mode">
+        <button type="button" data-mode="hotseat">Two players, one screen</button>
+        <button type="button" data-mode="church">Play Church against the AI</button>
+        <button type="button" data-mode="court">Play Court against the AI</button>
+      </nav>
+    </main>`;
   app.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
     const m = b.dataset.mode!;
     if (m === "hotseat") startGame({ kind: "hotseat" });
     else startGame({ kind: "ai", human: (m === "church" ? 0 : 1) as PlayerId });
   }));
+  app.querySelector<HTMLButtonElement>("button")!.focus();
 }
 
-/** Engine log lines with player numbers replaced by faction names. */
+/** Engine log lines with player numbers replaced by faction names and coordinates by square names. */
 function readableLog(s: GameState): string[] {
-  return s.log.map((l) => l.replace(/P([01])/g, (_, p) => factionName(s.players[Number(p)].faction)));
+  return s.log.map((l) => named(l.replace(/P([01])/g, (_, p) => factionName(s.players[Number(p)].faction))));
+}
+
+/** Announce log lines added since the last render, and the start of each of the viewer's phases. */
+function announceChanges(s: GameState): void {
+  const lines = readableLog(s).slice(lastLogLen);
+  lastLogLen = s.log.length;
+  if (lines.length) announce(lines.join(". ") + ".");
+  const key = `${s.active}-${s.turn}-${s.phase}`;
+  if (key === lastPhaseKey || !humanTurn()) return;
+  lastPhaseKey = key;
+  const p = s.players[s.active];
+  const res = p.faction === "church" ? "Wine" : "Blood";
+  if (s.phase === "discard") announce(`Hand limit: you hold ${p.hand.length} cards. Choose a card in your hand to discard.`);
+  if (s.phase === "play") announce(`Your play phase. ${p.wine} ${res}. Choose a card in your hand, then a square.`);
+  if (s.phase === "act") announce(`Your act phase. ${s.actionsLeft} actions.`);
+}
+
+/** Spoken label of a field square: name, sanctity, occupant, and the action a press would take. */
+function squareLabel(s: GameState, x: number, y: number): string {
+  const parts = [`${squareName(x, y)}, ${s.squares[y][x]}`];
+  const c = occupant(s, { x, y });
+  if (c) {
+    const who = c.controller === viewer() ? "Yours" : "Opponent's";
+    const resting = c.controller === s.active && !canAct(s, c) ? " Cannot act this turn." : "";
+    const sel = selected?.uid === c.uid ? " Selected." : "";
+    parts.push(`${who}: ${cardLabel(s.defs[c.defId], s.players[c.controller].faction, c.composure)}${resting}${sel}`);
+  } else {
+    parts.push("empty");
+  }
+  const a = selected ? actionAt(x, y) : undefined;
+  if (a) parts.push(`Press to ${describe(a)}`);
+  return parts.join(". ");
+}
+
+/** Move keyboard focus within the field with the arrow keys (one tab stop for the whole field). */
+function onFieldKey(e: KeyboardEvent): void {
+  const s = state!;
+  const d: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+  const step = d[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const x = Math.min(Math.max(fieldFocus.x + step[0], 0), s.squares[0].length - 1);
+  const y = Math.min(Math.max(fieldFocus.y + step[1], 0), s.squares.length - 1);
+  fieldFocus = { x, y };
+  app.querySelectorAll<HTMLButtonElement>(".square").forEach((b) => (b.tabIndex = -1));
+  const target = app.querySelector<HTMLButtonElement>(`[data-focus="sq:${x},${y}"]`)!;
+  target.tabIndex = 0;
+  target.focus();
 }
 
 /** Draw the match screen: sidebar, field, hand and overlays. */
 function render(): void {
   hidePreview();
   const s = state!;
+  const focusKey = pendingFocus ?? (document.activeElement as HTMLElement | null)?.dataset?.focus ?? null;
+  pendingFocus = null;
   const me = viewer();
   const mine = s.players[me];
   const theirs = s.players[opponent(me)];
@@ -151,55 +261,73 @@ function render(): void {
   const resource = mine.faction === "church" ? "Wine" : "Blood";
   const endLabel = { discard: "Discard down to 6", play: "End play phase", act: "End turn" }[s.phase];
   const whose = mode.kind === "ai" && s.active !== me ? "AI" : factionName(s.players[s.active].faction);
+  const w = s.squares[0].length;
+  const h = s.squares.length;
 
   app.innerHTML = `
     <div class="match ${mine.faction}">
-      <aside class="sidebar">
+      <aside class="sidebar" aria-label="Match controls">
         <h1>Church <i>vs</i> Court</h1>
-        <div class="status">
-          <div><b>${whose}</b>, ${s.phase} phase</div>
-          <div>${resource}: <b>${mine.wine}</b></div>
-          <div>Actions: <b>${s.phase === "act" && s.active === me ? s.actionsLeft : "-"}</b></div>
-          <div class="muted">Opponent: ${theirs.hand.length} in hand, ${theirs.deck.length} in deck</div>
-          <div class="muted">You: ${mine.deck.length} in deck</div>
-        </div>
-        <button id="end" ${myTurn && s.phase !== "discard" ? "" : "disabled"}>${endLabel}</button>
-        <button id="history">History</button>
-        <button id="deck">My deck</button>
+        <section class="status" aria-label="Match status">
+          <p><b>${whose}</b>, ${s.phase} phase</p>
+          <p>${resource}: <b>${mine.wine}</b></p>
+          <p>Actions: <b>${s.phase === "act" && s.active === me ? s.actionsLeft : "none"}</b></p>
+          <p class="muted">Opponent: ${theirs.hand.length} in hand, ${theirs.deck.length} in deck</p>
+          <p class="muted">You (${factionName(mine.faction)}): ${mine.deck.length} in deck</p>
+        </section>
+        <button type="button" id="end" data-focus="btn:end" ${myTurn && s.phase !== "discard" ? "" : "disabled"}>${endLabel}</button>
+        <button type="button" id="history" data-focus="btn:history">History</button>
+        <button type="button" id="deck" data-focus="btn:deck">My deck</button>
         <div class="spacer"></div>
-        <button id="surrender" class="danger">Surrender</button>
+        <button type="button" id="surrender" class="danger" data-focus="btn:surrender">Surrender</button>
       </aside>
-      <main class="board"><div class="grid" style="--cols:${s.squares[0].length}"></div></main>
-      <footer class="hand"></footer>
+      <main class="board">
+        <div class="grid" role="group" style="--cols:${w}"
+          aria-label="Field, Town Square: columns A to ${String.fromCharCode(64 + w)} from west to east, rows 1 to ${h} from top to bottom. Use the arrow keys to move between squares."></div>
+      </main>
+      <section class="hand" aria-label="Your hand, ${mine.hand.length} cards"></section>
     </div>`;
 
   const grid = app.querySelector<HTMLElement>(".grid")!;
   s.squares.forEach((row, y) => row.forEach((sanctity, x) => {
-    const sq = document.createElement("div");
+    const sq = document.createElement("button");
+    sq.type = "button";
     sq.className = `square ${sanctity}`;
+    sq.dataset.focus = `sq:${x},${y}`;
+    sq.tabIndex = fieldFocus.x === x && fieldFocus.y === y ? 0 : -1;
+    sq.setAttribute("aria-label", squareLabel(s, x, y));
+    sq.insertAdjacentHTML("beforeend", `<span class="coord" aria-hidden="true">${squareName(x, y)}</span>`);
     const a = selected ? actionAt(x, y) : undefined;
     if (a) sq.classList.add(`target-${a.type}`);
     const c = occupant(s, { x, y });
     if (c) {
-      const faction = s.players[c.controller].faction;
-      const tile = tileEl(s.defs[c.defId], faction, c.composure, c.controller === s.active && !canAct(s, c));
+      const tile = tileEl(s.defs[c.defId], s.players[c.controller].faction, c.composure, c.controller === s.active && !canAct(s, c));
       if (selected?.uid === c.uid) tile.classList.add("selected");
-      tile.addEventListener("mouseenter", () => showPreview(tile, c.uid));
-      tile.addEventListener("mouseleave", hidePreview);
       sq.append(tile);
+      sq.addEventListener("mouseenter", () => showPreview(sq, c.uid));
+      sq.addEventListener("mouseleave", hidePreview);
+      sq.addEventListener("focus", () => showPreview(sq, c.uid));
+      sq.addEventListener("blur", hidePreview);
     }
+    sq.addEventListener("focus", () => { fieldFocus = { x, y }; });
     sq.addEventListener("click", () => onSquareClick(x, y));
     grid.append(sq);
   }));
+  grid.addEventListener("keydown", onFieldKey);
 
   const hand = app.querySelector<HTMLElement>(".hand")!;
   hand.style.setProperty("--n", String(Math.max(2, mine.hand.length)));
   const playable = new Set(myTurn ? legalActions(s).filter((a) => a.type === "play").map((a) => (a as { uid: number }).uid) : []);
-  if (myTurn && s.phase === "discard") hand.insertAdjacentHTML("beforeend", `<div class="banner">Hand limit: click a card to discard it</div>`);
+  const discarding = myTurn && s.phase === "discard";
+  if (discarding) hand.insertAdjacentHTML("beforeend", `<p class="banner" aria-hidden="true">Hand limit: click a card to discard it</p>`);
   for (const uid of mine.hand) {
-    const el = cardEl(s.defs[s.cards[uid].defId], mine.faction);
+    const def = s.defs[s.cards[uid].defId];
+    const hint = discarding ? " Press to discard." : playable.has(uid) ? " Can be played." : "";
+    const el = cardEl(def, mine.faction, undefined, cardLabel(def, mine.faction) + hint);
+    el.dataset.focus = `hand:${uid}`;
+    el.setAttribute("aria-pressed", String(selected?.uid === uid));
     if (playable.has(uid)) el.classList.add("playable");
-    if (myTurn && s.phase === "discard") el.classList.add("discardable");
+    if (discarding) el.classList.add("discardable");
     if (selected?.uid === uid) el.classList.add("selected");
     el.addEventListener("click", () => onHandClick(uid));
     hand.append(el);
@@ -209,35 +337,48 @@ function render(): void {
     if (!humanTurn()) return;
     act({ type: s.phase === "play" ? "endPlay" : "endTurn" });
   });
-  app.querySelector("#history")!.addEventListener("click", () => { panel = panel === "history" ? null : "history"; render(); });
-  app.querySelector("#deck")!.addEventListener("click", () => { panel = panel === "deck" ? null : "deck"; render(); });
+  app.querySelector("#history")!.addEventListener("click", () => { panel = "history"; render(); });
+  app.querySelector("#deck")!.addEventListener("click", () => { panel = "deck"; render(); });
   app.querySelector("#surrender")!.addEventListener("click", () => {
     if (s.winner === null && confirm("Surrender this match?")) { state = concede(s, me); render(); }
   });
 
-  if (panel) renderPanel(panel);
+  announceChanges(s);
+
+  let dialogFocus: HTMLElement | null = null;
+  if (panel) dialogFocus = renderPanel(panel);
   if (handOver && s.winner === null) {
-    overlay(`<h2>${factionName(s.players[s.active].faction)}'s turn</h2><p>Pass the device, then continue.</p>
-      <button id="ready">Continue</button>`);
-    app.querySelector("#ready")!.addEventListener("click", () => { handOver = false; render(); });
+    dialogFocus = overlay(`${factionName(s.players[s.active].faction)}'s turn`, `<p>Pass the device, then continue.</p>
+      <button type="button" id="ready">Continue</button>`);
+    app.querySelector("#ready")!.addEventListener("click", () => { handOver = false; pendingFocus = "btn:end"; render(); });
   }
   if (s.winner !== null) {
-    const w = factionName(s.players[s.winner].faction);
     const youWon = mode.kind === "ai" ? (s.winner === mode.human ? "You win!" : "The AI wins.") : "";
-    overlay(`<h2>${w} wins</h2><p>${youWon}</p>
-      <button id="again">Play again</button><button id="menu">Main menu</button>`);
+    dialogFocus = overlay(`${factionName(s.players[s.winner].faction)} wins`, `<p>${youWon}</p>
+      <button type="button" id="again">Play again</button><button type="button" id="menu">Main menu</button>`);
     app.querySelector("#again")!.addEventListener("click", () => startGame(mode));
     app.querySelector("#menu")!.addEventListener("click", renderStart);
   }
+
+  if (dialogFocus) {
+    app.querySelector(".match")!.setAttribute("inert", "");
+    dialogFocus.focus();
+  } else if (focusKey) {
+    const el = app.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`);
+    (el && !(el as HTMLButtonElement).disabled ? el : app.querySelector<HTMLElement>("#history"))?.focus();
+  }
 }
 
-/** Show a modal box over the match. */
-function overlay(inner: string): void {
-  app.insertAdjacentHTML("beforeend", `<div class="overlay"><div class="dialog">${inner}</div></div>`);
+/** Show a modal dialog over the match; returns the element that should take focus. */
+function overlay(title: string, inner: string): HTMLElement {
+  app.insertAdjacentHTML("beforeend", `
+    <div class="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <h2 id="dialog-title">${title}</h2>${inner}</div></div>`);
+  return app.querySelector<HTMLElement>(".dialog button")!;
 }
 
-/** History or deck contents in a closable side panel. */
-function renderPanel(p: "history" | "deck"): void {
+/** History or deck contents in a modal side panel; returns the element that should take focus. */
+function renderPanel(p: "history" | "deck"): HTMLElement {
   const s = state!;
   let body: string;
   if (p === "history") {
@@ -248,24 +389,31 @@ function renderPanel(p: "history" | "deck"): void {
       const name = s.defs[s.cards[uid].defId].name;
       counts[name] = (counts[name] ?? 0) + 1;
     }
-    body = Object.entries(counts).sort().map(([n, k]) => `<li>${n} x${k}</li>`).join("") || "<li>Empty</li>";
+    body = Object.entries(counts).sort().map(([n, k]) => `<li>${n}, ${k} ${k === 1 ? "copy" : "copies"}</li>`).join("") || "<li>Empty</li>";
   }
+  const title = p === "history" ? "History" : "My deck";
   app.insertAdjacentHTML("beforeend", `
-    <div class="panel"><h2>${p === "history" ? "History" : "My deck"}</h2><ul>${body}</ul>
-    <button id="close-panel">Close</button></div>`);
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+      <h2 id="panel-title">${title}</h2>
+      <ul tabindex="0" aria-label="${title}, ${p === "history" ? "oldest first" : "remaining cards"}">${body}</ul>
+      <button type="button" id="close-panel">Close</button>
+    </div>`);
   const list = app.querySelector<HTMLElement>(".panel ul")!;
   list.scrollTop = list.scrollHeight;
-  app.querySelector("#close-panel")!.addEventListener("click", () => { panel = null; render(); });
+  const close = () => { panel = null; pendingFocus = `btn:${p === "history" ? "history" : "deck"}`; render(); };
+  app.querySelector("#close-panel")!.addEventListener("click", close);
+  app.querySelector(".panel")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") close(); });
+  return list;
 }
 
-/** Full-card preview next to a field tile. */
-function showPreview(tile: HTMLElement, uid: number): void {
+/** Full-card preview next to a field square; decorative, the square's label carries the same information. */
+function showPreview(anchor: HTMLElement, uid: number): void {
   hidePreview();
   const s = state!;
   const c = s.cards[uid];
   const el = cardEl(s.defs[c.defId], s.players[c.controller].faction, c.composure);
   el.classList.add("preview");
-  const r = tile.getBoundingClientRect();
+  const r = anchor.getBoundingClientRect();
   const left = r.right + 12 + 200 > window.innerWidth ? r.left - 212 : r.right + 12;
   el.style.left = `${left}px`;
   el.style.top = `${Math.max(8, Math.min(r.top - 40, window.innerHeight - 320))}px`;
@@ -276,5 +424,14 @@ function showPreview(tile: HTMLElement, uid: number): void {
 function hidePreview(): void {
   document.querySelectorAll(".card.preview").forEach((e) => e.remove());
 }
+
+/** Escape clears the current selection. */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && state && selected && !panel) {
+    selected = null;
+    announceSelection();
+    render();
+  }
+});
 
 renderStart();

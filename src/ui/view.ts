@@ -11,9 +11,25 @@ const SVG = {
   composure: '<path d="M12 2l8 3v6c0 5.2-3.4 9.3-8 11-4.6-1.7-8-5.8-8-11V5z"/>',
 };
 
-/** Small inline SVG icons: heart for Charm, shield for Composure. */
+/** Small inline SVG icons: heart for Charm, shield for Composure; hidden from screen readers. */
 export function icon(kind: "charm" | "composure"): string {
-  return `<svg class="icon icon-${kind}" viewBox="0 0 24 24">${SVG[kind]}</svg>`;
+  return `<svg class="icon icon-${kind}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[kind]}</svg>`;
+}
+
+/** Chess-style square name: columns A, B, C... west to east, rows 1, 2, 3... top to bottom. */
+export function squareName(x: number, y: number): string {
+  return `${String.fromCharCode(65 + x)}${y + 1}`;
+}
+
+const sideName = (f: Faction) => (f === "church" ? "Church" : "Court");
+
+/** Spoken description of a card face: name, side, cost, stats and text. */
+export function cardLabel(def: CharacterDef, faction: Faction, composure?: number): string {
+  const f = def.faces[faction];
+  const comp = composure === undefined ? `Composure ${f.composure}` : `Composure ${composure} of ${f.composure}`;
+  const text = f.text.map((t) => (f.unknown.includes(t) ? `${t} (not implemented yet)` : t)).join(" ");
+  const cost = `cost ${f.cost} ${faction === "church" ? "Wine" : "Blood"}`;
+  return `${f.name}, ${sideName(faction)}, ${cost}, Charm ${f.charm}, ${comp}.${text ? " " + text : ""}`;
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -25,35 +41,37 @@ function html(markup: string): HTMLElement {
   return t.content.firstElementChild as HTMLElement;
 }
 
-/** A full 2:3 card for the hand and the hover preview; composure shows the current value when given. */
-export function cardEl(def: CharacterDef, faction: Faction, composure?: number): HTMLElement {
+/** A full 2:3 card. As a button (hand) it carries a spoken label; otherwise (preview) it is hidden from screen readers. */
+export function cardEl(def: CharacterDef, faction: Faction, composure?: number, label?: string): HTMLElement {
   const f = def.faces[faction];
   const text = f.text.map((t) =>
     f.unknown.includes(t) ? `<span class="unimpl" title="not implemented in the engine yet">${esc(t)}</span>` : esc(t),
   ).join(" ");
   const comp = composure ?? f.composure;
+  const tag = label === undefined ? "div" : "button";
+  const a11y = label === undefined ? 'aria-hidden="true"' : `type="button" aria-label="${esc(label)}"`;
   return html(`
-    <div class="card ${faction}">
-      <div class="cost"><span>${f.cost}</span></div>
-      <img class="portrait" src="${portraitUrl(def, faction)}" alt="${esc(f.name)}" draggable="false">
-      <div class="name">${esc(f.name)}</div>
-      <div class="text">${text}</div>
-      <div class="stats">
+    <${tag} class="card ${faction}" ${a11y}>
+      <span class="cost"><span>${f.cost}</span></span>
+      <img class="portrait" src="${portraitUrl(def, faction)}" alt="" draggable="false">
+      <span class="name">${esc(f.name)}</span>
+      <span class="text">${text}</span>
+      <span class="stats">
         <span class="stat">${icon("charm")}${f.charm}</span>
         <span class="stat ${comp < f.composure ? "hurt" : ""}">${comp}${icon("composure")}</span>
-      </div>
-    </div>`);
+      </span>
+    </${tag}>`);
 }
 
-/** A compact square tile for a character on the field. */
+/** A compact square tile for a character on the field; decorative, the square's button carries the label. */
 export function tileEl(def: CharacterDef, faction: Faction, composure: number, resting: boolean): HTMLElement {
   const f = def.faces[faction];
   return html(`
-    <div class="tile ${faction} ${resting ? "resting" : ""}">
-      <img src="${portraitUrl(def, faction)}" alt="${esc(f.name)}" draggable="false">
+    <span class="tile ${faction} ${resting ? "resting" : ""}" aria-hidden="true">
+      <img src="${portraitUrl(def, faction)}" alt="" draggable="false">
       <span class="slot item"></span>
       <span class="slot condition">${resting ? "Zz" : ""}</span>
       <span class="badge charm">${icon("charm")}${f.charm}</span>
       <span class="badge composure ${composure < f.composure ? "hurt" : ""}">${composure}${icon("composure")}</span>
-    </div>`);
+    </span>`);
 }
