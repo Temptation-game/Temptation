@@ -8,10 +8,10 @@ test("the hand flip button shows the card's other side and back", async ({ page 
   const card = slot.locator(".card");
   const flip = slot.locator(".peek-btn");
   await expect(card).toHaveClass(/\bchurch\b/);
-  await expect(card).toHaveAccessibleDescription(/Other side: .+, Court,/);
+  await expect(card).toHaveAccessibleDescription(/Reverse: .+, Court,/);
   await flip.click();
   await expect(slot.locator(".card")).toHaveClass(/\bcourt\b.*\bpeeking\b|\bpeeking\b.*\bcourt\b/);
-  await expect(slot.locator(".card")).toHaveAccessibleName(/^Showing her other side: .+, Court, .+ In your hand she plays as Church\./);
+  await expect(slot.locator(".card")).toHaveAccessibleName(/^Showing her reverse: .+, Court, .+ In your hand she plays as Church\./);
   await expect(slot.locator(".peek-btn")).toHaveAttribute("aria-pressed", "true");
   await expect(slot.locator(".peek-btn")).toBeFocused();
   await slot.locator(".peek-btn").click();
@@ -40,7 +40,7 @@ test("field girls describe their other side, and F on a square flips the inspect
   await startAi(page, "Church");
   const placed = await playFirstCard(page);
   const sq = square(page, placed);
-  await expect(sq).toHaveAccessibleDescription(/Other side: .+, Court,/);
+  await expect(sq).toHaveAccessibleDescription(/Reverse: .+, Court,/);
   await sq.focus();
   await expect(page.locator(".inspect-card .card")).toHaveClass(/\bchurch\b/);
   await page.keyboard.press("f");
@@ -67,4 +67,40 @@ test("holding F toggles once despite key repeat, and releasing keeps the other s
   await expect(card).toHaveClass(/peeking/);
   await page.keyboard.press("f");
   await expect(card).not.toHaveClass(/peeking/);
+});
+
+test("F flips the hovered card when the mouse moved there after another card was clicked", async ({ page }) => {
+  await startAi(page, "Church");
+  const cards = page.locator(".hand .card");
+  const a = await cards.nth(0).getAttribute("data-focus");
+  const b = await cards.nth(2).getAttribute("data-focus");
+  await cards.nth(0).click();
+  await page.locator(`[data-focus="${b}"]`).hover();
+  await page.keyboard.press("f");
+  await expect(page.locator(`[data-focus="${b}"]`)).toHaveClass(/peeking/);
+  await expect(page.locator(`[data-focus="${a}"]`)).not.toHaveClass(/peeking/);
+  await page.keyboard.press("f");
+  await expect(page.locator(`[data-focus="${b}"]`)).not.toHaveClass(/peeking/);
+  await expect(page.locator(`[data-focus="${a}"]`)).not.toHaveClass(/peeking/);
+});
+
+test("F flips the focused card when keyboard focus moved there after the mouse settled on another", async ({ page }) => {
+  await startAi(page, "Church");
+  const cards = page.locator(".hand .card");
+  const a = await cards.nth(0).getAttribute("data-focus");
+  const b = await cards.nth(2).getAttribute("data-focus");
+  await page.locator(`[data-focus="${b}"]`).hover();
+  await page.locator(`[data-focus="${a}"]`).focus();
+  await page.keyboard.press("f");
+  await expect(page.locator(`[data-focus="${a}"]`)).toHaveClass(/peeking/);
+  await expect(page.locator(`[data-focus="${b}"]`)).not.toHaveClass(/peeking/);
+});
+
+test("a flipped card is tagged \"reverse\" and the inspect button says Show reverse", async ({ page }) => {
+  await startAi(page, "Church");
+  const slot = page.locator(".hand .hand-slot").first();
+  await slot.locator(".peek-btn").click();
+  const tag = await slot.locator(".card").evaluate((c) => getComputedStyle(c, "::after").content);
+  expect(tag).toBe('"reverse"');
+  await expect(slot.locator(".peek-btn")).toHaveAttribute("title", "Show reverse (F)");
 });

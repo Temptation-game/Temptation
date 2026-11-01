@@ -8,6 +8,7 @@ Priority may not match the chronological order. Pick them up in order of effort 
 
 - [ ] Collect string consts (including menus etc.) into a separate folder. Reference them in code rather than keeping them as magic string. This will matter is something is renamed, if we add localications, etc.
 - [ ] Collect game constants (such as deck size) into another separate file.
+- [ ] Need to flesh out terminology. Rules separate Discard pile and Married couples, in the interface they're a special part of Discard. Needs discussion.
 
 ## Large features
 
@@ -43,6 +44,8 @@ Need discussion before pickup, and require significant work. Here for reference.
 - Card trading between users
 
 ## Done
+- [x] Flipped cards say "reverse" (tag, inspect button, tooltip, screen-reader text, Cards page hints).
+- [x] F acts on whichever card was touched last: the one the mouse entered, or the one focus moved to (focus restored after a redraw does not count).
 - [x] Discard pile (bottom right) with Sent Home and Wedding Registry tabs; both players' discards are visible.
 - [x] Game-over screen: win glow with rising hearts in the winner's colours; a loss drains the board with a vignette in the winner's colour.
 - [x] Settings (AI difficulty: easy / normal / hard) and Accessibility (animations: follow system / on / off; font: standard / OpenDyslexic).

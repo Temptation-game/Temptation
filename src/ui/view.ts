@@ -169,13 +169,13 @@ export const otherSide = (f: Faction): Faction => (f === "church" ? "court" : "c
 
 /** Spoken summary of a card's other side, for accessible descriptions. */
 export function otherSideText(def: CharacterDef, shown: Faction): string {
-  return `Other side: ${cardLabel(def, otherSide(shown))}`;
+  return `Reverse: ${cardLabel(def, otherSide(shown))}`;
 }
 
 /** Small round button that shows a card's other side in place. */
 export function peekButton(name: string, pressed: boolean): HTMLButtonElement {
   return html(`
-    <button type="button" class="peek-btn" aria-pressed="${pressed}" aria-label="Show ${esc(name)}'s other side" title="Show other side (F)">
+    <button type="button" class="peek-btn" aria-pressed="${pressed}" aria-label="Show ${esc(name)}'s reverse" title="Show reverse (F)">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>
     </button>`) as HTMLButtonElement;
 }

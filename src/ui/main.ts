@@ -50,6 +50,11 @@ let endScreenShown = -1;
 const peeking = new Set<number>();
 /** Card under the mouse in the hand or on the field, for the F hotkey. */
 let hoveredUid: number | null = null;
+/** When the mouse last entered a card, and when keyboard or click focus last moved; F acts on the more recent one. */
+let hoveredAt = 0;
+let focusedAt = 0;
+/** True while render() puts focus back after a redraw; that is not the player moving focus. */
+let restoringFocus = false;
 /** Hand cards each player has already seen, so newly drawn cards can fly in from the deck pile. */
 const shownHands = new Map<PlayerId, Set<number>>();
 /** Cards arriving in the hand by temptation in the current redraw; they get their own animation. */
@@ -387,7 +392,7 @@ function renderCardsPage(): void {
       <button type="button" data-side="church" aria-pressed="true">Church</button>
       <button type="button" data-side="court" aria-pressed="false">Court</button>
     </div>
-    <p class="muted">Click a card to see her other side.</p>
+    <p class="muted">Click a card to see her reverse.</p>
     <div class="card-grid" role="list"></div>`, "cards");
   const grid = app.querySelector(".card-grid")!;
   const sideButtons = [...app.querySelectorAll<HTMLButtonElement>(".side-switch button")];
@@ -511,7 +516,7 @@ function render(): void {
       </main>
       <aside class="inspect" aria-label="Inspected card">
         <div class="inspect-card" aria-hidden="true"></div>
-        <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>Show other side (F)</button>
+        <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>Show reverse (F)</button>
         <p class="hint" aria-hidden="true">Press Shift to keep open</p>
       </aside>
       <div class="bottom-row">
@@ -543,7 +548,7 @@ function render(): void {
       const tile = tileEl(s.defs[c.defId], s.players[c.controller].faction, c.composure, c.controller === s.active && !canAct(s, c));
       if (selected?.uid === c.uid) tile.classList.add("selected");
       sq.append(tile);
-      sq.addEventListener("mouseenter", (e) => { hoveredUid = c.uid; inspectSoon(c.uid, e.shiftKey); });
+      sq.addEventListener("mouseenter", (e) => { hoveredUid = c.uid; hoveredAt = performance.now(); inspectSoon(c.uid, e.shiftKey); });
       sq.addEventListener("mouseleave", () => { if (hoveredUid === c.uid) hoveredUid = null; });
       sq.addEventListener("focus", () => inspect(c.uid));
     }
@@ -569,7 +574,7 @@ function render(): void {
     const peek = peeking.has(uid);
     const shownSide = peek ? otherSide(mine.faction) : mine.faction;
     const label = peek
-      ? `Showing her other side: ${cardLabel(def, shownSide)} In your hand she plays as ${factionName(mine.faction)}.${hint}`
+      ? `Showing her reverse: ${cardLabel(def, shownSide)} In your hand she plays as ${factionName(mine.faction)}.${hint}`
       : cardLabel(def, mine.faction) + hint;
     const el = cardEl(def, shownSide, { mode: "button", label, description: peek ? "" : otherSideText(def, mine.faction) });
     if (peek) el.classList.add("peeking");
@@ -579,7 +584,7 @@ function render(): void {
     if (discarding) el.classList.add("discardable");
     if (selected?.uid === uid) el.classList.add("selected");
     el.addEventListener("click", () => onHandClick(uid));
-    el.addEventListener("mouseenter", () => { hoveredUid = uid; });
+    el.addEventListener("mouseenter", () => { hoveredUid = uid; hoveredAt = performance.now(); });
     el.addEventListener("mouseleave", () => { if (hoveredUid === uid) hoveredUid = null; });
     const slot = document.createElement("div");
     slot.className = "hand-slot";
@@ -646,7 +651,9 @@ function render(): void {
     dialogFocus.focus();
   } else if (focusKey) {
     const el = app.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`);
+    restoringFocus = true;
     (el && !(el as HTMLButtonElement).disabled ? el : app.querySelector<HTMLElement>("#history"))?.focus();
+    restoringFocus = false;
   }
 }
 
@@ -765,7 +772,7 @@ function renderDeckView(): HTMLElement {
   app.insertAdjacentHTML("beforeend", `
     <div class="overlay deck-view"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="deck-title">
       <h2 id="deck-title">My deck: ${mine.deck.length} cards left</h2>
-      <p class="muted">Sorted by name, so the draw order stays hidden. Click a card to see her other side.</p>
+      <p class="muted">Sorted by name, so the draw order stays hidden. Click a card to see her reverse.</p>
       <div class="card-grid" role="list"></div>
       <button type="button" id="close-deck">Close</button>
     </div></div>`);
@@ -853,7 +860,7 @@ function drawInspect(): void {
   if (btn) {
     btn.hidden = false;
     btn.setAttribute("aria-pressed", String(peek));
-    btn.setAttribute("aria-label", `Show ${state.defs[c.defId].name}'s other side`);
+    btn.setAttribute("aria-label", `Show ${state.defs[c.defId].name}'s reverse`);
   }
 }
 
@@ -917,17 +924,23 @@ window.addEventListener("beforeunload", (e) => {
   if (state && state.winner === null && !devReload) e.preventDefault();
 });
 
-/** F on the focused or hovered card (hand card or field girl) toggles her other side; key repeat while held is ignored. */
+/** Note when the player moves focus (keyboard or click), as opposed to render() restoring it. */
+document.addEventListener("focusin", () => { if (!restoringFocus) focusedAt = performance.now(); });
+
+/** F toggles the other side of whichever card the player touched last: the one under the mouse or the focused one.
+ * Key repeat while held is ignored. */
 document.addEventListener("keydown", (e) => {
   if ((e.key !== "f" && e.key !== "F") || !state || detail || panel || confirmingSurrender || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.repeat) { e.preventDefault(); return; }
   const key = (document.activeElement as HTMLElement | null)?.dataset?.focus ?? "";
-  let uid: number | undefined;
-  if (key.startsWith("hand:") || key.startsWith("peek:")) uid = Number(key.split(":")[1]);
+  let focused: number | undefined;
+  if (key.startsWith("hand:") || key.startsWith("peek:")) focused = Number(key.split(":")[1]);
   else if (key.startsWith("sq:")) {
     const [x, y] = key.slice(3).split(",").map(Number);
-    uid = occupant(state, { x, y })?.uid;
-  } else if (hoveredUid !== null) uid = hoveredUid;
+    focused = occupant(state, { x, y })?.uid;
+  }
+  const hovered = hoveredUid !== null && state.cards[hoveredUid].zone !== "deck" ? hoveredUid : undefined;
+  const uid = hovered !== undefined && (focused === undefined || hoveredAt >= focusedAt) ? hovered : focused;
   if (uid === undefined) return;
   e.preventDefault();
   if (state.cards[uid].zone === "field") inspected = uid;

@@ -289,7 +289,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .peek-btn[aria-pressed="true"] { background: #4a4450; border-color: #ffffffaa; }
 .card.peeking { outline: 2px dashed #ffffffaa; }
 .card.peeking::after {
-  content: "other side"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%);
+  content: "reverse"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%);
   padding: 1px 8px; border-radius: 8px; background: #000c; color: var(--ink); font-size: 11px; font-style: italic; white-space: nowrap;
 }
 .inspect-peek { font-size: 13px; padding: 4px 10px; }
