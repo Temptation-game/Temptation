@@ -222,3 +222,7 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .history-inline ol { margin: 0; padding-left: 0; list-style: none; font-size: 12.5px; line-height: 1.4; }
 .history-inline li + li { border-top: 1px solid #ffffff14; padding-top: 2px; margin-top: 2px; }
 .sidebar:has(.history-inline) .spacer { display: none; }
+.side-switch { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; }
+.side-switch button[data-side="church"] { background: #111e33; border-color: #28549e; }
+.side-switch button[data-side="court"] { background: #500a0a; border-color: #9e2828; }
+.side-switch button[aria-pressed="true"] { border-color: #eccf00; box-shadow: 0 0 0 1px #eccf00; }

@@ -10,6 +10,7 @@ import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
+import type { FlipCard } from "./view.ts";
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
 type Selection = { from: "hand" | "field"; uid: number } | null;
@@ -246,16 +247,36 @@ function renderRules(): void {
 /** Announce the side a flippable card now shows. */
 const announceFlip = (name: string) => (f: Faction) => announce(`${name}, ${factionName(f)} side.`);
 
-/** Every card in cards.md, Church side up; click a card to flip it. */
+/** Every card in cards.md, Church side up; click a card to flip it, or flip all with the side buttons. */
 function renderCardsPage(): void {
   const ids = Object.keys(defs).sort((a, b) => defs[a].name.localeCompare(defs[b].name));
-  renderPage("Cards", `<p class="muted">Click a card to see her other side.</p><div class="card-grid" role="list"></div>`, "cards");
+  renderPage("Cards", `
+    <div class="side-switch" role="group" aria-label="Show all cards on one side">
+      <span class="muted">Show all as:</span>
+      <button type="button" data-side="church" aria-pressed="true">Church</button>
+      <button type="button" data-side="court" aria-pressed="false">Court</button>
+    </div>
+    <p class="muted">Click a card to see her other side.</p>
+    <div class="card-grid" role="list"></div>`, "cards");
   const grid = app.querySelector(".card-grid")!;
+  const sideButtons = [...app.querySelectorAll<HTMLButtonElement>(".side-switch button")];
+  const press = (side: Faction | null) => sideButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.side === side)));
+  const cards: FlipCard[] = [];
   for (const id of ids) {
     const item = document.createElement("div");
     item.setAttribute("role", "listitem");
-    item.append(flipCardEl(defs[id], "church", announceFlip(defs[id].name)));
+    const card = flipCardEl(defs[id], "church", (f) => { press(null); announceFlip(defs[id].name)(f); });
+    cards.push(card);
+    item.append(card);
     grid.append(item);
+  }
+  for (const b of sideButtons) {
+    b.addEventListener("click", () => {
+      const side = b.dataset.side as Faction;
+      cards.forEach((c) => c.showSide(side));
+      press(side);
+      announce(`All cards: ${factionName(side)} side.`);
+    });
   }
 }
 

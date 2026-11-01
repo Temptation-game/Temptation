@@ -110,7 +110,10 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
 /** A card that turns over on click to show its other side; `count` adds an "xN" copies badge.
  * Only one face is rendered at a time: the card squashes to zero width, swaps face, and widens again.
  */
-export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Faction) => void, count?: number): HTMLElement {
+/** A flippable card element; `showSide` turns it to a side if it is not already showing it. */
+export type FlipCard = HTMLElement & { showSide(side: Faction): void };
+
+export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Faction) => void, count?: number): FlipCard {
   const other = (f: Faction): Faction => (f === "church" ? "court" : "church");
   const copies = count && count > 1 ? ` ${count} copies.` : "";
   const label = (f: Faction) => `${cardLabel(def, f)}${copies} Press to flip to the ${sideName(other(f))} side.`;
@@ -126,15 +129,21 @@ export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Fa
     btn.setAttribute("aria-label", label(shown));
   };
   show();
-  btn.addEventListener("click", () => {
-    if (btn.classList.contains("turning")) return;
-    shown = other(shown);
-    onFlip(shown);
+  /** Turn the card to the given side, animated unless reduced motion is requested. */
+  const turnTo = (side: Faction) => {
+    shown = side;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return show();
     btn.classList.add("turning");
     window.setTimeout(() => { show(); btn.classList.remove("turning"); }, FLIP_HALF_MS);
+  };
+  btn.addEventListener("click", () => {
+    if (btn.classList.contains("turning")) return;
+    turnTo(other(shown));
+    onFlip(shown);
   });
-  return btn;
+  const card = btn as FlipCard;
+  card.showSide = (side) => { if (side !== shown) turnTo(side); };
+  return card;
 }
 
 /** Duration of each half of the flip animation; matches .flip-inner's transition in style.css. */
