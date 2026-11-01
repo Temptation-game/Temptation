@@ -6,7 +6,6 @@ Requests and ideas, in rough priority order. Anyone can add an item at any time;
 
 Priority may not match the chronological order. Pick them up in order of effort (small stuff first) and importance (bugs first).
 
-- [ ] Need to flesh out terminology. Rules separate Discard pile and Married couples, in the interface they're a special part of Discard. Needs discussion.
 
 ## Your backlog
 
@@ -50,6 +49,7 @@ Need discussion before pickup, and require significant work. Here for reference.
 - Sidekick card type (for familiars, summons, items that can move by themselves, token guys, etc)
 
 ## Done
+- [x] Terminology: the interface pile is "Out of play" (tabs Sent Home and Wedding Registry), matching the rules' separate discard pile and married couples.
 - [x] Court-side Surrender button is blue.
 - [x] New cover converted to public/cover.webp (88 KB); cover snapshot baseline refreshed.
 - [x] Interface text collected in src/strings/ (en.ts, functions for text with values).

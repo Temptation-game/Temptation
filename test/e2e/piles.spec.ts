@@ -13,12 +13,12 @@ test("the deck pile shows the remaining count and opens the deck dialog", async 
   await expect(pile).toBeFocused();
 });
 
-test("the discard pile starts empty and has Sent Home and Wedding Registry tabs", async ({ page }) => {
+test("the Out of play pile starts empty and has Sent Home and Wedding Registry tabs", async ({ page }) => {
   await startAi(page, "Church");
   const pile = page.locator("#discards");
-  await expect(pile).toHaveAccessibleName("Discard pile: 0 sent home, 0 couples married");
+  await expect(pile).toHaveAccessibleName("Out of play: 0 sent home, 0 couples married");
   await pile.click();
-  const dialog = page.getByRole("dialog", { name: "Discard pile" });
+  const dialog = page.getByRole("dialog", { name: "Out of play" });
   const sent = dialog.getByRole("tab", { name: "Sent Home" });
   const registry = dialog.getByRole("tab", { name: "Wedding Registry" });
   await expect(sent).toHaveAttribute("aria-selected", "true");
