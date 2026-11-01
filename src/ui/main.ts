@@ -192,7 +192,10 @@ function renderStart(): void {
   app.innerHTML = `
     <main class="start">
       <h1 class="sr-only">Temptation, a trading card game</h1>
-      <img class="cover" src="cover.webp" alt="Cover art: a nun kisses the cheek of a blushing vampire in a moonlit forest.">
+      <div class="cover-wrap">
+        <img class="cover" src="cover.webp" alt="Cover art: a nun kisses the cheek of a blushing vampire in a moonlit forest.">
+        <span class="age-badge" role="img" aria-label="Age rating: 16 and over">16+</span>
+      </div>
       <nav class="menu" aria-label="Game mode">
         <button type="button" data-mode="hotseat">Two players, one screen</button>
         <button type="button" data-mode="church">Play Church against the AI</button>
