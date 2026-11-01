@@ -13,7 +13,7 @@ import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tile
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
 type Selection = { from: "hand" | "field"; uid: number } | null;
-type Panel = "history" | "deck" | null;
+type Panel = "deck" | null;
 
 const defs = parseCards(cardsMd);
 const glossary = parseGlossary(glossaryMd);
@@ -31,6 +31,8 @@ let fieldFocus = { x: 0, y: 0 };
 let pendingFocus: string | null = null;
 let lastLogLen = 0;
 let lastPhaseKey = "";
+/** Whether the history log is shown in the sidebar. */
+let historyOpen = false;
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
 /** Field girl shown in the inspect area beside the board. */
@@ -346,7 +348,8 @@ function render(): void {
           <p class="muted">You (${factionName(mine.faction)}): ${mine.deck.length} in deck</p>
         </section>
         <button type="button" id="end" data-focus="btn:end" ${myTurn && s.phase !== "discard" ? "" : "disabled"}>${endLabel}</button>
-        <button type="button" id="history" data-focus="btn:history">History</button>
+        <button type="button" id="history" data-focus="btn:history" aria-expanded="${historyOpen}" aria-controls="history-log">${historyOpen ? "Hide history" : "History"}</button>
+        ${historyOpen ? `<section id="history-log" class="history-inline" aria-label="History, oldest first" tabindex="0"><ol>${readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("")}</ol></section>` : ""}
         <button type="button" id="deck" data-focus="btn:deck">My deck</button>
         <div class="spacer"></div>
         <button type="button" id="surrender" class="danger" data-focus="btn:surrender">Surrender</button>
@@ -414,7 +417,9 @@ function render(): void {
     if (!humanTurn()) return;
     act({ type: s.phase === "play" ? "endPlay" : "endTurn" });
   });
-  app.querySelector("#history")!.addEventListener("click", () => { panel = "history"; render(); });
+  app.querySelector("#history")!.addEventListener("click", () => { historyOpen = !historyOpen; pendingFocus = "btn:history"; render(); });
+  const log = app.querySelector<HTMLElement>("#history-log");
+  if (log) log.scrollTop = log.scrollHeight;
   app.querySelector("#deck")!.addEventListener("click", () => { panel = "deck"; render(); });
   app.querySelector("#surrender")!.addEventListener("click", () => {
     if (s.winner === null && confirm("Surrender this match?")) { state = concede(s, me); render(); }
@@ -423,7 +428,7 @@ function render(): void {
   announceChanges(s);
 
   let dialogFocus: HTMLElement | null = null;
-  if (panel) dialogFocus = renderPanel(panel);
+  if (panel === "deck") dialogFocus = renderDeckView();
   if (detail) dialogFocus = renderDetail(detail.uid);
   if (handOver && s.winner === null) {
     dialogFocus = overlay(`${factionName(s.players[s.active].faction)}'s turn`, `<p>Pass the device, then continue.</p>
@@ -483,25 +488,6 @@ function overlay(title: string, inner: string): HTMLElement {
   return app.querySelector<HTMLElement>(".dialog button")!;
 }
 
-/** History or deck contents in a modal side panel; returns the element that should take focus. */
-function renderPanel(p: "history" | "deck"): HTMLElement {
-  if (p === "deck") return renderDeckView();
-  const s = state!;
-  const body = readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("");
-  const title = "History";
-  app.insertAdjacentHTML("beforeend", `
-    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
-      <h2 id="panel-title">${title}</h2>
-      <ul tabindex="0" aria-label="${title}, oldest first">${body}</ul>
-      <button type="button" id="close-panel">Close</button>
-    </div>`);
-  const list = app.querySelector<HTMLElement>(".panel ul")!;
-  list.scrollTop = list.scrollHeight;
-  const close = () => { panel = null; pendingFocus = "btn:history"; render(); };
-  app.querySelector("#close-panel")!.addEventListener("click", close);
-  app.querySelector(".panel")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); close(); } });
-  return list;
-}
 
 /** Show a field girl in the inspect area after a short delay, unless Shift keeps the current one. */
 function inspectSoon(uid: number, shift: boolean): void {
