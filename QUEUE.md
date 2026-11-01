@@ -6,8 +6,6 @@ Requests and ideas, in rough priority order. Anyone can add an item at any time;
 
 Priority may not match the chronological order. Pick them up in order of effort (small stuff first) and importance (bugs first).
 
-- [ ] Collect string consts (including menus etc.) into a separate folder. Reference them in code rather than keeping them as magic string. This will matter is something is renamed, if we add localications, etc.
-- [ ] Collect game constants (such as deck size) into another separate file.
 - [ ] Need to flesh out terminology. Rules separate Discard pile and Married couples, in the interface they're a special part of Discard. Needs discussion.
 
 ## Large features
@@ -42,8 +40,14 @@ Need discussion before pickup, and require significant work. Here for reference.
 - User accounts
 - Card drop after each won game (at random, with different cards having different drop frequency)
 - Card trading between users
+- Desktop version
+- Sidekick card type (for familiars, summons, items that can move by themselves, token guys, etc)
 
 ## Done
+- [x] Court-side Surrender button is blue.
+- [x] New cover converted to public/cover.webp (88 KB); cover snapshot baseline refreshed.
+- [x] Interface text collected in src/strings/ (en.ts, functions for text with values).
+- [x] Game and interface constants collected in src/config/ (rules, match, ai, ui).
 - [x] Flipped cards say "reverse" (tag, inspect button, tooltip, screen-reader text, Cards page hints).
 - [x] F acts on whichever card was touched last: the one the mouse entered, or the one focus moved to (focus restored after a redraw does not count).
 - [x] Discard pile (bottom right) with Sent Home and Wedding Registry tabs; both players' discards are visible.

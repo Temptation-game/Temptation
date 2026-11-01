@@ -336,3 +336,4 @@ html.font-dyslexic, html.font-dyslexic * { font-family: "OpenDyslexic", sans-ser
 html.font-dyslexic .sidebar h1 { font-size: 20px; }
 html.font-dyslexic .sidebar .status { font-size: 13px; }
 html.font-dyslexic .sidebar .muted { font-size: 11px; }
+.match.court button.danger { background: #111a2e; border-color: #28549e; }
