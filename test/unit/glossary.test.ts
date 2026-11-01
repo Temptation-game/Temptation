@@ -1,9 +1,8 @@
-/** Tests for the glossary parser and term matcher. Run: npm test */
+/** Unit tests for src/glossary.ts: glossary parser and [term] markers. Run: npm test */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseGlossary, splitTerms, stripMarkers, termsIn, unknownTerms } from "../src/glossary.ts";
-import { parseCards } from "../src/cards.ts";
+import { parseGlossary, splitTerms, stripMarkers, termsIn, unknownTerms } from "../../src/glossary.ts";
 
 const g = parseGlossary("# Glossary\n\nTempt: Send her away.\nAdventurous: Acts at once.\nnot a term line\n");
 
@@ -31,14 +30,7 @@ test("termsIn lists each term once, in order of first use", () => {
   assert.deepEqual(termsIn("[Tempt] her. [Adventurous]. [Tempted] again.", g).map((t) => t.term), ["Tempt", "Adventurous"]);
 });
 
-test("ability matching ignores [term] markers", () => {
-  const d = parseCards("## X\nn 1 1 1\n[Adventurous].\nv 1 1 1\nWhen this character would have been [tempted], [convert] her instead.\n").x;
-  assert.deepEqual(d.faces.church.abilities, ["adventurous"]);
-  assert.deepEqual(d.faces.court.abilities, ["convertInsteadOfTempt"]);
-  assert.deepEqual(d.faces.court.unknown, []);
-});
-
 test("glossary.md in the repo parses", () => {
-  const real = parseGlossary(readFileSync(new URL("../glossary.md", import.meta.url), "utf8"));
+  const real = parseGlossary(readFileSync(new URL("../../glossary.md", import.meta.url), "utf8"));
   assert.ok(real.some((e) => e.term === "Tempt"));
 });

@@ -1,8 +1,8 @@
-/** Tests for the minimal markdown renderer used by the rules screen. Run: npm test */
+/** Unit tests for src/ui/markdown.ts: the rules-page markdown renderer. Run: npm test */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { renderMarkdown } from "../src/ui/markdown.ts";
+import { renderMarkdown } from "../../../src/ui/markdown.ts";
 
 test("headings, paragraphs, lists and emphasis", () => {
   const md = "# Title\n\nSome *tempted* text\nwrapped.\n\n- one\n- **two**\n\n1) first\n2) second\n";
@@ -23,7 +23,7 @@ test("heading offset shifts levels", () => {
 });
 
 test("overview.md renders with every line accounted for", () => {
-  const html = renderMarkdown(readFileSync(new URL("../overview.md", import.meta.url), "utf8"));
+  const html = renderMarkdown(readFileSync(new URL("../../../overview.md", import.meta.url), "utf8"));
   assert.ok(html.includes("<h2>Turn</h2>"));
   assert.ok(!html.includes("\\*"));
 });

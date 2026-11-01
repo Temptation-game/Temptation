@@ -71,6 +71,9 @@ function humanTurn(): boolean {
 }
 
 const AI_DELAY_MS = 450;
+/** A ?seed=N URL parameter fixes the deal, first player and AI choices (for tests and bug reports). */
+const seedParam = new URLSearchParams(location.search).get("seed");
+const fixedSeed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : null;
 const factionName = (f: Faction) => (f === "church" ? "Church" : "Court");
 
 /** Start a match in the given mode. */
@@ -79,7 +82,7 @@ function startGame(m: Mode): void {
   const ids = Object.keys(defs);
   const list = Array.from({ length: 12 }, (_, i) => ids[i % ids.length]);
   const decks: [DeckList, DeckList] = [{ faction: "church", cards: list }, { faction: "court", cards: list }];
-  const seed = Date.now() % 1_000_000;
+  const seed = fixedSeed ?? Date.now() % 1_000_000;
   aiRng = seed;
   matchId += 1;
   state = newGame(defs, town as LocationDef, decks, seed, (seed % 2) as PlayerId);

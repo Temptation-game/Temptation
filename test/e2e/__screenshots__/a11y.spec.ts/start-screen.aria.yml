@@ -1,0 +1,11 @@
+- main:
+  - heading "Temptation, a trading card game" [level=1]
+  - 'img "Cover art: a nun kisses the cheek of a blushing vampire in a moonlit forest."'
+  - 'img /Age rating: \d+ and over/': /\d+\+/
+  - navigation "Game mode":
+    - button "Two players, one screen"
+    - button "Play Church against the AI"
+    - button "Play Court against the AI"
+    - button "Rules"
+    - button "Glossary"
+    - button "Cards"

@@ -1,4 +1,4 @@
-# Test, build and publish the game to GitHub Pages on every push to master.
+# Unit tests, browser tests, build, then publish the game to GitHub Pages on every push to master.
 name: Deploy to GitHub Pages
 
 on:
@@ -26,6 +26,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 14
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
