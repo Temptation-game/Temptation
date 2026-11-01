@@ -10,7 +10,7 @@ import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
-import { animateDiscard, animateEnter, animateFlirt, animateMove } from "./animate.ts";
+import { animateArrive, animateDiscard, animateEnter, animateFlirt, animateMove } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
@@ -108,6 +108,10 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
   const id = matchId;
   const prev = state!;
   const next = apply(prev, a);
+  /** Squares of girls about to be tempted into a hand, measured before the board changes. */
+  const leavingRects = a.type === "flirt"
+    ? [a.uid, a.target].filter((u) => next.cards[u].zone === "hand").map((u) => ({ uid: u, rect: squareEl(prev.cards[u].pos!)?.getBoundingClientRect() }))
+    : [];
   animating = true;
   app.querySelectorAll(".square").forEach((sq) => sq.classList.remove("target-play", "target-move", "target-flirt"));
   app.querySelectorAll(".tile.selected").forEach((t) => t.classList.remove("selected"));
@@ -140,6 +144,10 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
   if (a.type === "play") {
     const sq = squareEl(a.at);
     if (sq) animateEnter(sq);
+  }
+  for (const { uid, rect } of leavingRects) {
+    const card = app.querySelector<HTMLElement>(`.hand [data-focus="hand:${uid}"]`);
+    if (card && rect) animateArrive(card, rect);
   }
   return true;
 }

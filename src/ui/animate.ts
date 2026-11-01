@@ -145,3 +145,21 @@ async function marriageGlow(a: HTMLElement, b: HTMLElement, ca: { x: number; y: 
   ]);
   heart.remove();
 }
+
+/** A girl tempted into the shown hand flies from her old square into her new hand slot. */
+export function animateArrive(card: HTMLElement, from: DOMRect): void {
+  if (reducedMotion()) return;
+  const to = card.getBoundingClientRect();
+  const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+  const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+  const scale = Math.min(1, from.width / to.width);
+  card.style.zIndex = "6";
+  card.animate(
+    [
+      { transform: `translate(${dx}px, ${dy}px) scale(${scale}) rotate(-8deg)`, opacity: 0.4, boxShadow: "0 0 0 0 #ff5fa200" },
+      { transform: "translate(0, -18px) scale(1.04) rotate(2deg)", opacity: 1, boxShadow: "0 0 22px 6px #ff5fa2aa", offset: 0.75 },
+      { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1, boxShadow: "0 4px 14px #0008" },
+    ],
+    { duration: 650, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" },
+  ).finished.then(() => { card.style.zIndex = ""; });
+}
