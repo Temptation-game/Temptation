@@ -125,7 +125,7 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
   padding: 12px 0 4px; position: relative;
 }
 .hand .card { transition: transform 0.12s; cursor: pointer; }
-.hand .card + .card { margin-left: min(0px, calc((100vw - 60px - var(--n) * (var(--card-w) + 12px)) / (var(--n) - 1))); }
+.hand .hand-slot + .hand-slot, .hand .card-back + .card-back { margin-left: min(0px, calc((100vw - 60px - var(--n) * (var(--card-w) + 12px)) / (var(--n) - 1))); }
 .hand .card:hover { z-index: 2; }
 .hand .card:hover { transform: translateY(-10px) scale(1.04); }
 .hand .card.playable { outline-color: var(--highlight); }
@@ -276,3 +276,21 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 @media (prefers-reduced-motion: reduce) {
   .overlay.end.fresh, .match.defeated.fresh { animation: none; }
 }
+
+/* ---------- other-side view ---------- */
+.hand-slot { position: relative; flex: none; display: flex; align-items: flex-end; }
+.hand-slot:hover, .hand-slot:focus-within { z-index: 2; }
+.peek-btn {
+  position: absolute; left: -9px; top: -9px; z-index: 3; width: 26px; height: 26px; padding: 0;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: #24222a; border: 1px solid #5a5560; opacity: 0.7;
+}
+.peek-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hand-slot:hover .peek-btn, .peek-btn:focus-visible, .peek-btn[aria-pressed="true"] { opacity: 1; }
+.peek-btn[aria-pressed="true"] { background: #4a4450; border-color: #ffffffaa; }
+.card.peeking { outline: 2px dashed #ffffffaa; }
+.card.peeking::after {
+  content: "other side"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%);
+  padding: 1px 8px; border-radius: 8px; background: #000c; color: var(--ink); font-size: 11px; font-style: italic; white-space: nowrap;
+}
+.inspect-peek { font-size: 13px; padding: 4px 10px; }

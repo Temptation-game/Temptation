@@ -11,7 +11,7 @@ import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { animateArrive, animateDiscard, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
-import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
+import { cardEl, cardLabel, cardTerms, flipCardEl, otherSide, otherSideText, peekButton, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
@@ -42,6 +42,10 @@ let animating = false;
 let confirmingSurrender = false;
 /** Match id whose game-over animation has already played. */
 let endScreenShown = -1;
+/** Cards (by uid) the player is viewing on their other side; view only, play is unaffected. */
+const peeking = new Set<number>();
+/** Card under the mouse in the hand or on the field, for the F hotkey. */
+let hoveredUid: number | null = null;
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
 /** Field girl shown in the inspect area beside the board. */
@@ -93,6 +97,8 @@ function startGame(m: Mode): void {
   lastPhaseKey = "";
   pendingFocus = null;
   inspected = null;
+  peeking.clear();
+  hoveredUid = null;
   confirmingSurrender = false;
   animating = false;
   selected = null;
@@ -125,7 +131,7 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
     }
     if (a.type === "discard") {
       const card = app.querySelector<HTMLElement>(`[data-focus="hand:${a.uid}"]`);
-      if (card) await animateDiscard(card);
+      if (card) await animateDiscard(card.closest<HTMLElement>(".hand-slot") ?? card);
     }
     if (a.type === "flirt") {
       const att = prev.cards[a.uid];
@@ -454,9 +460,10 @@ function render(): void {
         <div class="grid" role="group" style="--cols:${w}"
           aria-label="Field, Town Square: columns A to ${String.fromCharCode(64 + w)} from west to east, rows 1 to ${h} from top to bottom. Use the arrow keys to move between squares, and I for card details."></div>
       </main>
-      <aside class="inspect" aria-hidden="true">
-        <div class="inspect-card"></div>
-        <p class="hint">Press Shift to keep open</p>
+      <aside class="inspect" aria-label="Inspected card">
+        <div class="inspect-card" aria-hidden="true"></div>
+        <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>Show other side (F)</button>
+        <p class="hint" aria-hidden="true">Press Shift to keep open</p>
       </aside>
       <section class="hand" aria-label="Your hand, ${mine.hand.length} cards. Press I on a card for details."></section>
     </div>`;
@@ -470,8 +477,11 @@ function render(): void {
     sq.tabIndex = fieldFocus.x === x && fieldFocus.y === y ? 0 : -1;
     sq.setAttribute("aria-label", squareLabel(s, x, y));
     const occ = occupant(s, { x, y });
-    const terms = occ ? cardTerms(s.defs[occ.defId], s.players[occ.controller].faction) : "";
-    if (terms) sq.setAttribute("aria-description", terms);
+    if (occ) {
+      const side = s.players[occ.controller].faction;
+      const desc = [cardTerms(s.defs[occ.defId], side), otherSideText(s.defs[occ.defId], side)].filter(Boolean).join(" ");
+      sq.setAttribute("aria-description", desc);
+    }
     sq.insertAdjacentHTML("beforeend", `<span class="coord" aria-hidden="true">${squareName(x, y)}</span>`);
     const a = selected ? actionAt(x, y) : undefined;
     if (a) sq.classList.add(`target-${a.type}`);
@@ -480,7 +490,8 @@ function render(): void {
       const tile = tileEl(s.defs[c.defId], s.players[c.controller].faction, c.composure, c.controller === s.active && !canAct(s, c));
       if (selected?.uid === c.uid) tile.classList.add("selected");
       sq.append(tile);
-      sq.addEventListener("mouseenter", (e) => inspectSoon(c.uid, e.shiftKey));
+      sq.addEventListener("mouseenter", (e) => { hoveredUid = c.uid; inspectSoon(c.uid, e.shiftKey); });
+      sq.addEventListener("mouseleave", () => { if (hoveredUid === c.uid) hoveredUid = null; });
       sq.addEventListener("focus", () => inspect(c.uid));
     }
     sq.addEventListener("focus", () => { fieldFocus = { x, y }; });
@@ -490,6 +501,7 @@ function render(): void {
   grid.addEventListener("keydown", onFieldKey);
   grid.addEventListener("mouseleave", () => clearTimeout(inspectTimer));
   drawInspect();
+  app.querySelector(".inspect-peek")!.addEventListener("click", () => { if (inspected !== null) { pendingFocus = "btn:inspect-peek"; togglePeek(inspected); } });
 
   const hand = app.querySelector<HTMLElement>(".hand")!;
   hand.style.setProperty("--n", String(Math.max(2, mine.hand.length)));
@@ -501,14 +513,28 @@ function render(): void {
   for (const uid of hidden ? [] : mine.hand) {
     const def = s.defs[s.cards[uid].defId];
     const hint = discarding ? " Press to discard." : playable.has(uid) ? " Can be played." : "";
-    const el = cardEl(def, mine.faction, { mode: "button", label: cardLabel(def, mine.faction) + hint });
+    const peek = peeking.has(uid);
+    const shownSide = peek ? otherSide(mine.faction) : mine.faction;
+    const label = peek
+      ? `Showing her other side: ${cardLabel(def, shownSide)} In your hand she plays as ${factionName(mine.faction)}.${hint}`
+      : cardLabel(def, mine.faction) + hint;
+    const el = cardEl(def, shownSide, { mode: "button", label, description: peek ? "" : otherSideText(def, mine.faction) });
+    if (peek) el.classList.add("peeking");
     el.dataset.focus = `hand:${uid}`;
     el.setAttribute("aria-pressed", String(selected?.uid === uid));
     if (playable.has(uid)) el.classList.add("playable");
     if (discarding) el.classList.add("discardable");
     if (selected?.uid === uid) el.classList.add("selected");
     el.addEventListener("click", () => onHandClick(uid));
-    hand.append(el);
+    el.addEventListener("mouseenter", () => { hoveredUid = uid; });
+    el.addEventListener("mouseleave", () => { if (hoveredUid === uid) hoveredUid = null; });
+    const slot = document.createElement("div");
+    slot.className = "hand-slot";
+    const flip = peekButton(def.name, peek);
+    flip.dataset.focus = `peek:${uid}`;
+    flip.addEventListener("click", () => togglePeek(uid));
+    slot.append(el, flip);
+    hand.append(slot);
   }
 
   if (hidden) {
@@ -656,8 +682,29 @@ function drawInspect(): void {
     return;
   }
   const c = state.cards[inspected];
-  const composure = c.zone === "field" ? c.composure : undefined;
-  box.append(cardEl(state.defs[c.defId], state.players[c.controller].faction, { composure, mode: "preview" }));
+  const ownSide = state.players[c.controller].faction;
+  const peek = peeking.has(c.uid);
+  const composure = c.zone === "field" && !peek ? c.composure : undefined;
+  const card = cardEl(state.defs[c.defId], peek ? otherSide(ownSide) : ownSide, { composure, mode: "preview" });
+  if (peek) card.classList.add("peeking");
+  box.append(card);
+  const btn = app.querySelector<HTMLButtonElement>(".inspect-peek");
+  if (btn) {
+    btn.hidden = false;
+    btn.setAttribute("aria-pressed", String(peek));
+    btn.setAttribute("aria-label", `Show ${state.defs[c.defId].name}'s other side`);
+  }
+}
+
+/** Show or hide a card's other side (view only). */
+function togglePeek(uid: number): void {
+  if (!state) return;
+  if (peeking.has(uid)) peeking.delete(uid);
+  else peeking.add(uid);
+  const c = state.cards[uid];
+  const side = peeking.has(uid) ? otherSide(state.players[c.controller].faction) : state.players[c.controller].faction;
+  announce(`${state.defs[c.defId].name}: showing her ${factionName(side)} side.`);
+  render();
 }
 
 document.addEventListener("keydown", (e) => { if (e.key === "Shift") shiftHeld = true; });
@@ -707,6 +754,22 @@ import.meta.hot?.on("vite:beforeFullReload", () => { devReload = true; });
 /** Ask for confirmation before closing or reloading the tab during an unfinished match. */
 window.addEventListener("beforeunload", (e) => {
   if (state && state.winner === null && !devReload) e.preventDefault();
+});
+
+/** F flips the view of the focused or hovered card (hand card or field girl). */
+document.addEventListener("keydown", (e) => {
+  if ((e.key !== "f" && e.key !== "F") || !state || detail || panel || confirmingSurrender || e.ctrlKey || e.metaKey || e.altKey) return;
+  const key = (document.activeElement as HTMLElement | null)?.dataset?.focus ?? "";
+  let uid: number | undefined;
+  if (key.startsWith("hand:") || key.startsWith("peek:")) uid = Number(key.split(":")[1]);
+  else if (key.startsWith("sq:")) {
+    const [x, y] = key.slice(3).split(",").map(Number);
+    uid = occupant(state, { x, y })?.uid;
+  } else if (hoveredUid !== null) uid = hoveredUid;
+  if (uid === undefined) return;
+  e.preventDefault();
+  if (state.cards[uid].zone === "field") inspected = uid;
+  togglePeek(uid);
 });
 
 /** Escape clears the current selection. */

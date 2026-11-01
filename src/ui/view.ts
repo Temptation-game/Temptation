@@ -75,6 +75,8 @@ export interface CardOptions {
   /** button: hand card with a spoken label; preview: decorative hover copy; detail: readable card in the info panel. */
   mode: "button" | "preview" | "detail";
   label?: string;
+  /** Extra text for the accessible description, after the glossary definitions. */
+  description?: string;
 }
 
 /** A full card (2:3, taller when the text needs it). */
@@ -88,7 +90,7 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
   ).join(" ");
   const comp = opts.composure ?? f.composure;
   const tag = opts.mode === "button" ? "button" : "div";
-  const description = cardTerms(def, faction);
+  const description = [cardTerms(def, faction), opts.description ?? ""].filter(Boolean).join(" ");
   const a11y = {
     button: `type="button" aria-label="${esc(opts.label ?? cardLabel(def, faction))}"${description ? ` aria-description="${esc(description)}"` : ""}`,
     preview: 'aria-hidden="true"',
@@ -160,4 +162,20 @@ export function tileEl(def: CharacterDef, faction: Faction, composure: number, r
       <span class="badge charm">${icon("charm")}${f.charm}</span>
       <span class="badge composure ${composure < f.composure ? "hurt" : ""}">${composure}${icon("composure")}</span>
     </span>`);
+}
+
+/** The other side of a face. */
+export const otherSide = (f: Faction): Faction => (f === "church" ? "court" : "church");
+
+/** Spoken summary of a card's other side, for accessible descriptions. */
+export function otherSideText(def: CharacterDef, shown: Faction): string {
+  return `Other side: ${cardLabel(def, otherSide(shown))}`;
+}
+
+/** Small round button that shows a card's other side in place. */
+export function peekButton(name: string, pressed: boolean): HTMLButtonElement {
+  return html(`
+    <button type="button" class="peek-btn" aria-pressed="${pressed}" aria-label="Show ${esc(name)}'s other side" title="Show other side (F)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>
+    </button>`) as HTMLButtonElement;
 }
