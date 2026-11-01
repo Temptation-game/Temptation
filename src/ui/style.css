@@ -95,7 +95,7 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 .card {
   position: relative; width: var(--card-w); aspect-ratio: 2 / 3; flex: none;
   display: flex; flex-direction: column; padding: 8px; gap: 4px;
-  background: linear-gradient(var(--primary), var(--dark));
+  background: linear-gradient(var(--primary), var(--dark)) border-box no-repeat;
   border: 5px solid var(--primary); outline: 2px solid var(--secondary); border-radius: 8px;
   box-shadow: 0 4px 14px #0008; user-select: none;
 }
@@ -225,4 +225,5 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .side-switch { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; }
 .side-switch button[data-side="church"] { background: #111e33; border-color: #28549e; }
 .side-switch button[data-side="court"] { background: #500a0a; border-color: #9e2828; }
-.side-switch button[aria-pressed="true"] { border-color: #eccf00; box-shadow: 0 0 0 1px #eccf00; }
+.side-switch button[data-side="church"][aria-pressed="true"] { border-color: #eccf00; box-shadow: 0 0 0 1px #eccf00; }
+.side-switch button[data-side="court"][aria-pressed="true"] { border-color: #a2a8ab; box-shadow: 0 0 0 1px #a2a8ab; }
