@@ -50,3 +50,21 @@ test("field girls describe their other side, and F on a square flips the inspect
   await page.locator(".inspect-peek").click();
   await expect(page.locator(".inspect-card .card")).toHaveClass(/\bchurch\b/);
 });
+
+test("holding F toggles once despite key repeat, and releasing keeps the other side", async ({ page }) => {
+  await startAi(page, "Church");
+  const first = page.locator(".hand .card").first();
+  const key = await first.getAttribute("data-focus");
+  const card = page.locator(`[data-focus="${key}"]`);
+  await first.focus();
+  await page.keyboard.down("f");
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.down("f");
+    await expect(card).toHaveClass(/peeking/);
+  }
+  await page.keyboard.up("f");
+  await page.waitForTimeout(200);
+  await expect(card).toHaveClass(/peeking/);
+  await page.keyboard.press("f");
+  await expect(card).not.toHaveClass(/peeking/);
+});

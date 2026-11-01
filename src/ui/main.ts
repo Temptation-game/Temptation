@@ -917,9 +917,10 @@ window.addEventListener("beforeunload", (e) => {
   if (state && state.winner === null && !devReload) e.preventDefault();
 });
 
-/** F flips the view of the focused or hovered card (hand card or field girl). */
+/** F on the focused or hovered card (hand card or field girl) toggles her other side; key repeat while held is ignored. */
 document.addEventListener("keydown", (e) => {
   if ((e.key !== "f" && e.key !== "F") || !state || detail || panel || confirmingSurrender || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.repeat) { e.preventDefault(); return; }
   const key = (document.activeElement as HTMLElement | null)?.dataset?.focus ?? "";
   let uid: number | undefined;
   if (key.startsWith("hand:") || key.startsWith("peek:")) uid = Number(key.split(":")[1]);
