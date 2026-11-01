@@ -251,3 +251,28 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
   .sidebar button { padding: 5px 10px; }
   .card .cost { width: 26px; height: 26px; top: -8px; right: -8px; font-size: 14px; }
 }
+
+/* ---------- game over ---------- */
+.overlay.end.church { --end-tint: 236, 207, 0; }
+.overlay.end.court { --end-tint: 158, 40, 40; }
+.overlay.end.win { background: radial-gradient(circle at 50% 45%, rgba(var(--end-tint), 0.32), rgba(11, 10, 13, 0.82) 70%); overflow: hidden; }
+.overlay.end.lose { background: radial-gradient(circle at 50% 45%, rgba(11, 10, 13, 0.55) 35%, rgba(var(--end-tint), 0.45) 100%); }
+.overlay.end.fresh { animation: end-fade 1.1s ease-out; }
+.overlay.end .dialog { position: relative; z-index: 1; }
+.match.defeated { filter: grayscale(0.85) brightness(0.6); }
+.match.defeated.fresh { animation: drain 1.6s ease-in; }
+.end-heart {
+  position: absolute; bottom: -60px; width: var(--size); height: var(--size); pointer-events: none;
+  animation: rise linear infinite; opacity: 0;
+}
+.end-heart svg { width: 100%; height: 100%; fill: #ff5fa2; filter: drop-shadow(0 0 6px #ff5fa288); }
+@keyframes end-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drain { from { filter: grayscale(0) brightness(1); } to { filter: grayscale(0.85) brightness(0.6); } }
+@keyframes rise {
+  0% { transform: translateY(0) rotate(-8deg); opacity: 0; }
+  15% { opacity: 0.85; }
+  100% { transform: translateY(-110vh) rotate(12deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay.end.fresh, .match.defeated.fresh { animation: none; }
+}

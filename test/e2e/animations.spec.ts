@@ -1,6 +1,13 @@
 /** Animations: they run with motion allowed, lock input while running, and are skipped under reduced motion. */
 import { expect, test, type Page } from "@playwright/test";
-import { playFirstCard, square, startAi, waitForMyTurn } from "./helpers.ts";
+import { playFirstCard, square, startAi, startHotseat, waitForMyTurn } from "./helpers.ts";
+
+/** Surrender from the sidebar and confirm. */
+async function surrender(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Surrender" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Surrender" }).click();
+  await expect(page.getByRole("dialog", { name: /wins/ })).toBeVisible();
+}
 
 /** Number of running animations on the tile inside a square. */
 const running = (page: Page, sq: string) =>
@@ -36,6 +43,35 @@ test.describe("with motion allowed", () => {
     await expect(page.locator(".status")).toContainText("Actions: 2");
     await expect(page.locator("#end")).toBeEnabled();
   });
+});
+
+test.describe("game over, with motion allowed", () => {
+  test.use({ contextOptions: { reducedMotion: "no-preference" } });
+
+  test("a loss against the AI drains the board and tints towards the winner, without hearts", async ({ page }) => {
+    await startAi(page, "Church");
+    await surrender(page);
+    await expect(page.locator(".overlay.end")).toHaveClass(/\blose\b/);
+    await expect(page.locator(".overlay.end")).toHaveClass(/\bcourt\b/);
+    await expect(page.locator(".match")).toHaveClass(/\bdefeated\b/);
+    await expect(page.locator(".end-heart")).toHaveCount(0);
+  });
+
+  test("a hotseat win celebrates in the winner's colours with rising hearts", async ({ page }) => {
+    await startHotseat(page);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await surrender(page);
+    await expect(page.locator(".overlay.end")).toHaveClass(/\bwin\b/);
+    expect(await page.locator(".end-heart").count()).toBeGreaterThan(5);
+  });
+});
+
+test("under reduced motion the game-over tint shows without hearts", async ({ page }) => {
+  await startHotseat(page);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await surrender(page);
+  await expect(page.locator(".overlay.end")).toHaveClass(/\bwin\b/);
+  await expect(page.locator(".end-heart")).toHaveCount(0);
 });
 
 test("under reduced motion a played girl appears without animating", async ({ page }) => {

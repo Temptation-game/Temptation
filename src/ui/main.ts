@@ -10,7 +10,7 @@ import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
-import { animateArrive, animateDiscard, animateEnter, animateFlirt, animateMove } from "./animate.ts";
+import { animateArrive, animateDiscard, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
@@ -40,6 +40,8 @@ let historyOpen = false;
 let animating = false;
 /** Whether the surrender confirmation dialog is open. */
 let confirmingSurrender = false;
+/** Match id whose game-over animation has already played. */
+let endScreenShown = -1;
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
 /** Field girl shown in the inspect area beside the board. */
@@ -553,7 +555,8 @@ function render(): void {
     dialogFocus = overlay(`${factionName(s.players[s.winner].faction)} wins`, `<p>${youWon}</p>
       <button type="button" id="again">Play again</button><button type="button" id="menu">Main menu</button>`);
     app.querySelector("#again")!.addEventListener("click", () => startGame(mode));
-    app.querySelector("#menu")!.addEventListener("click", renderStart);
+    app.querySelector("#menu")!.addEventListener("click", renderStart);    const outcome = mode.kind === "ai" && s.winner !== mode.human ? "lose" : "win";
+    dressEndScreen(s.players[s.winner].faction, outcome);
   }
 
   if (dialogFocus) {
@@ -591,6 +594,33 @@ function renderDeckView(): HTMLElement {
   app.querySelector("#close-deck")!.addEventListener("click", close);
   app.querySelector(".deck-view")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); close(); } });
   return app.querySelector<HTMLElement>(".deck-view .flip-card") ?? app.querySelector<HTMLElement>("#close-deck")!;
+}
+
+/** Tint the game-over screen towards the winner: a warm glow with rising hearts for a win, a draining vignette for a loss. */
+function dressEndScreen(winner: Faction, outcome: "win" | "lose"): void {
+  const ov = app.querySelector<HTMLElement>(".overlay:last-of-type")!;
+  const first = endScreenShown !== matchId;
+  endScreenShown = matchId;
+  ov.classList.add("end", winner, outcome, first ? "fresh" : "settled");
+  if (outcome === "lose") app.querySelector(".match")!.classList.add("defeated", first ? "fresh" : "settled");
+  if (first && outcome === "win") spawnHearts(ov);
+}
+
+/** Hearts drifting up behind the result dialog. */
+function spawnHearts(layer: HTMLElement): void {
+  if (reducedMotion()) return;
+  const heart = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+  for (let i = 0; i < 14; i++) {
+    const h = document.createElement("span");
+    h.className = "end-heart";
+    h.setAttribute("aria-hidden", "true");
+    h.innerHTML = heart;
+    h.style.left = `${5 + Math.random() * 90}%`;
+    h.style.setProperty("--size", `${18 + Math.random() * 30}px`);
+    h.style.animationDelay = `${Math.random() * 1.6}s`;
+    h.style.animationDuration = `${3.2 + Math.random() * 2}s`;
+    layer.prepend(h);
+  }
 }
 
 /** Show a modal dialog over the match; returns the element that should take focus. */
