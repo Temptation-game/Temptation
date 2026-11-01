@@ -2,6 +2,8 @@ Temptation is a trading card game where, instead of fighting your opponents, you
 
 **Warning:** this game may contain suggestive content that is not suitable for younger audiences.
 
+Play at: https://temptation-game.github.io/Temptation/
+
 ## License
 
 Copyright (C) 2026 the Temptation authors listed in [CREDITS.md](CREDITS.md).
