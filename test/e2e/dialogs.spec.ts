@@ -79,3 +79,13 @@ test("Rules page shows the rules only; Glossary page is a definition list; Back 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Glossary" })).toBeFocused();
 });
+
+test("Credits page lists the credits from CREDITS.md and Back returns focus", async ({ page }) => {
+  await openMenu(page);
+  await page.getByRole("button", { name: "Credits" }).click();
+  await expect(page.getByRole("heading", { name: "Credits", level: 1 })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Card art", level: 2 })).toBeVisible();
+  await expect(page.locator("article")).toContainText("@shambibble");
+  await page.getByRole("button", { name: "Back to menu" }).click();
+  await expect(page.getByRole("button", { name: "Credits" })).toBeFocused();
+});

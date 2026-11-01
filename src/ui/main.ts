@@ -2,6 +2,7 @@
 import cardsMd from "../../cards.md?raw";
 import glossaryMd from "../../glossary.md?raw";
 import overviewMd from "../../overview.md?raw";
+import creditsMd from "../../CREDITS.md?raw";
 import town from "../../data/locations/town_square.json";
 import type { Action, DeckList, Faction, GameState, LocationDef, PlayerId, Pos } from "../types.ts";
 import { apply, canAct, concede, face, legalActions, newGame, occupant, opponent } from "../engine.ts";
@@ -264,6 +265,7 @@ function renderStart(): void {
         <button type="button" data-mode="rules">Rules</button>
         <button type="button" data-mode="glossary">Glossary</button>
         <button type="button" data-mode="cards">Cards</button>
+        <button type="button" data-mode="credits">Credits</button>
       </nav>
     </main>`;
   app.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
@@ -271,6 +273,7 @@ function renderStart(): void {
     if (m === "rules") renderRules();
     else if (m === "glossary") renderGlossary();
     else if (m === "cards") renderCardsPage();
+    else if (m === "credits") renderCredits();
     else if (m === "hotseat") startGame({ kind: "hotseat" });
     else startGame({ kind: "ai", human: (m === "church" ? 0 : 1) as PlayerId });
   }));
@@ -294,6 +297,11 @@ function renderPage(title: string, body: string, from: string): void {
   app.querySelector("#back")!.addEventListener("click", back);
   app.querySelector(".doc-page")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") back(); });
   app.querySelector<HTMLElement>("#page-title")!.focus();
+}
+
+/** The credits from CREDITS.md. */
+function renderCredits(): void {
+  renderPage("Credits", renderMarkdown(creditsMd.replace(/^# Credits\s*\n/, "")), "credits");
 }
 
 /** The rules from overview.md. */
