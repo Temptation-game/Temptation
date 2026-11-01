@@ -43,11 +43,11 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 /* ---------- match layout ---------- */
 .match {
   height: 100%; display: grid; gap: 16px; padding: 16px;
-  grid-template-columns: 230px 1fr 250px; grid-template-rows: 1fr auto;
+  grid-template-columns: 230px 1fr 250px; grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: "side board inspect" "hand hand hand";
 }
 .sidebar {
-  grid-area: side; display: flex; flex-direction: column; gap: 8px;
+  grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto;
   background: var(--primary); border: 3px solid var(--secondary); border-radius: 8px; padding: 14px;
 }
 .sidebar h1 { font-size: 26px; color: var(--highlight); }
@@ -216,7 +216,7 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 
 /* ---------- history log in the sidebar ---------- */
 .history-inline {
-  flex: 1 1 0; min-height: 80px; overflow-y: auto; margin: 2px 0;
+  flex: 1 1 0; min-height: 3.5em; overflow-y: auto; margin: 2px 0;
   background: #0006; border: 1px solid var(--secondary); border-radius: 6px; padding: 6px 8px;
 }
 .history-inline ol { margin: 0; padding-left: 0; list-style: none; font-size: 12.5px; line-height: 1.4; }
