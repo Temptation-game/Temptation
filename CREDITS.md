@@ -14,6 +14,9 @@
 ## Card art
 - @shambibble
 
+## Fonts
+- OpenDyslexic by Abbie Gonzalez, SIL Open Font License 1.1
+
 ## License
 - Code: GNU General Public License v3.0 or later ([full text](https://github.com/Temptation-game/Temptation/blob/master/LICENSE))
 - Game content (rules, card designs and text, glossary, locations): Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International ([full text](https://github.com/Temptation-game/Temptation/blob/master/LICENSE-CONTENT.txt))

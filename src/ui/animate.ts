@@ -1,11 +1,11 @@
-/** Board animations (move, flirt, play) with the Web Animations API; all are skipped under prefers-reduced-motion.
+/** Board animations (move, flirt, play, draw, discard) with the Web Animations API; all are skipped when animations are off.
  * Usage: await animateMove(fromSquare, toSquare);
  */
 
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
 
-/** Whether the user asked the system for reduced motion. */
-export const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** Whether animations are off: the Accessibility setting, or the system preference when following it (see settings.ts). */
+export const reducedMotion = () => document.documentElement.classList.contains("reduce-motion");
 
 const centre = (el: HTMLElement) => {
   const r = el.getBoundingClientRect();

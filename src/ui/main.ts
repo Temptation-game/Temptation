@@ -7,10 +7,11 @@ import town from "../../data/locations/town_square.json";
 import type { Action, DeckList, Faction, GameState, LocationDef, PlayerId, Pos } from "../types.ts";
 import { apply, canAct, concede, face, legalActions, newGame, occupant, opponent } from "../engine.ts";
 import { parseCards } from "../cards.ts";
-import { greedyAction } from "../ai/greedy.ts";
+import { aiAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { couples, sentHome } from "./piles.ts";
+import { applySettings, loadSettings, saveSettings, type Settings } from "./settings.ts";
 import { animateArrive, animateDiscard, animateDraw, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, otherSide, otherSideText, peekButton, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
@@ -20,6 +21,8 @@ type Selection = { from: "hand" | "field"; uid: number } | null;
 type Panel = "deck" | "discards" | null;
 
 const defs = parseCards(cardsMd);
+let settings: Settings = loadSettings();
+applySettings(settings);
 const glossary = parseGlossary(glossaryMd);
 setGlossary(glossary);
 const app = document.getElementById("app")!;
@@ -194,7 +197,7 @@ function scheduleAi(): void {
 function aiStep(id: number): void {
   if (id !== matchId || !state || state.winner !== null || mode.kind !== "ai" || state.active === mode.human) return;
   if (animating) return scheduleAi();
-  const [a, next] = greedyAction(state, aiRng);
+  const [a, next] = aiAction(state, aiRng, settings.difficulty);
   aiRng = next;
   const human = mode.human;
   void perform(a, () => {
@@ -292,6 +295,8 @@ function renderStart(): void {
         <button type="button" data-mode="rules">Rules</button>
         <button type="button" data-mode="glossary">Glossary</button>
         <button type="button" data-mode="cards">Cards</button>
+        <button type="button" data-mode="settings">Settings</button>
+        <button type="button" data-mode="accessibility">Accessibility</button>
         <button type="button" data-mode="credits">Credits</button>
       </nav>
     </main>`;
@@ -301,6 +306,8 @@ function renderStart(): void {
     else if (m === "glossary") renderGlossary();
     else if (m === "cards") renderCardsPage();
     else if (m === "credits") renderCredits();
+    else if (m === "settings") renderSettingsPage("settings");
+    else if (m === "accessibility") renderSettingsPage("accessibility");
     else if (m === "hotseat") startGame({ kind: "hotseat" });
     else startGame({ kind: "ai", human: (m === "church" ? 0 : 1) as PlayerId });
   }));
@@ -324,6 +331,38 @@ function renderPage(title: string, body: string, from: string): void {
   app.querySelector("#back")!.addEventListener("click", back);
   app.querySelector(".doc-page")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") back(); });
   app.querySelector<HTMLElement>("#page-title")!.focus();
+}
+
+/** A radio group for one setting. */
+function radioGroup<K extends keyof Settings>(key: K, legend: string, options: [Settings[K], string, string][]): string {
+  const items = options.map(([value, label, hint]) => `
+    <label><input type="radio" name="${key}" value="${value}" ${settings[key] === value ? "checked" : ""}>
+      <span class="option"><span>${label}</span>${hint ? `<span class="muted hint">${hint}</span>` : ""}</span></label>`).join("");
+  return `<fieldset><legend>${legend}</legend>${items}</fieldset>`;
+}
+
+/** The Settings or Accessibility page; choices are saved and applied immediately. */
+function renderSettingsPage(kind: "settings" | "accessibility"): void {
+  const body = kind === "settings"
+    ? radioGroup("difficulty", "AI difficulty", [
+        ["easy", "Easy", "makes mistakes now and then"],
+        ["normal", "Normal", "plays the best move it can see"],
+        ["hard", "Hard", "also thinks through your reply"],
+      ])
+    : radioGroup("motion", "Animations", [
+        ["system", "Follow system setting", "off when the system asks for reduced motion"],
+        ["on", "On", ""],
+        ["off", "Off", ""],
+      ]) + radioGroup("font", "Font", [
+        ["standard", "Standard", ""],
+        ["dyslexic", "Dyslexia-friendly", "OpenDyslexic"],
+      ]);
+  renderPage(kind === "settings" ? "Settings" : "Accessibility", `<form class="settings">${body}</form>`, kind);
+  app.querySelectorAll<HTMLInputElement>(".settings input").forEach((input) => input.addEventListener("change", () => {
+    settings = { ...settings, [input.name]: input.value } as Settings;
+    saveSettings(settings);
+    announce(`Saved: ${input.closest("fieldset")!.querySelector("legend")!.textContent}, ${input.closest("label")!.querySelector(".option > span")!.textContent!.trim()}.`);
+  }));
 }
 
 /** The credits from CREDITS.md. */

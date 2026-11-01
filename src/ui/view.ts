@@ -134,7 +134,7 @@ export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Fa
   /** Turn the card to the given side, animated unless reduced motion is requested. */
   const turnTo = (side: Faction) => {
     shown = side;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return show();
+    if (document.documentElement.classList.contains("reduce-motion")) return show();
     btn.classList.add("turning");
     window.setTimeout(() => { show(); btn.classList.remove("turning"); }, FLIP_HALF_MS);
   };
