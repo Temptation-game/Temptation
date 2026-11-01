@@ -11,6 +11,7 @@ import { aiAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { DECK_SIZE } from "../config/match.ts";
+import { S } from "../strings/index.ts";
 import { AI_DELAY_MS, ANIM, INSPECT_DELAY_MS } from "../config/ui.ts";
 import { couples, sentHome } from "./piles.ts";
 import { applySettings, loadSettings, saveSettings, type Settings } from "./settings.ts";
@@ -97,7 +98,7 @@ function humanTurn(): boolean {
 /** A ?seed=N URL parameter fixes the deal, first player and AI choices (for tests and bug reports). */
 const seedParam = new URLSearchParams(location.search).get("seed");
 const fixedSeed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : null;
-const factionName = (f: Faction) => (f === "church" ? "Church" : "Court");
+const factionName = (f: Faction) => S.side(f);
 
 /** Start a match in the given mode. */
 function startGame(m: Mode): void {
@@ -233,12 +234,12 @@ const nameOf = (uid: number) => face(state!, uid).name;
 /** Spoken description of an action, including the predicted Composure loss for flirts. */
 function describe(a: Action): string {
   switch (a.type) {
-    case "play": return `play ${nameOf(a.uid)} here`;
-    case "move": return `move ${nameOf(a.uid)} here`;
+    case "play": return S.board.play(nameOf(a.uid));
+    case "move": return S.board.move(nameOf(a.uid));
     case "flirt": {
       const mineLoss = face(state!, a.target).charm;
       const theirLoss = face(state!, a.uid).charm;
-      return `${nameOf(a.uid)} flirts with ${nameOf(a.target)}: she loses ${theirLoss} Composure, yours loses ${mineLoss}`;
+      return S.board.flirt(nameOf(a.uid), nameOf(a.target), theirLoss, mineLoss);
     }
     default: return a.type;
   }
@@ -246,20 +247,20 @@ function describe(a: Action): string {
 
 /** Announce what the current selection can do. */
 function announceSelection(): void {
-  if (!selected) return announce("Selection cleared.");
+  if (!selected) return announce(S.announce.selectionCleared);
   const acts = selectionActions();
-  if (acts.length === 0) return announce(`${nameOf(selected.uid)} selected. Nothing she can do right now.`);
+  if (acts.length === 0) return announce(S.announce.nothingToDo(nameOf(selected.uid)));
   const where = (a: Action) => {
     if (a.type === "play") return squareName(a.at.x, a.at.y);
     if (a.type === "move") return squareName(a.to.x, a.to.y);
-    if (a.type === "flirt") { const p = state!.cards[a.target].pos!; return `${nameOf(a.target)} on ${squareName(p.x, p.y)}`; }
+    if (a.type === "flirt") { const p = state!.cards[a.target].pos!; return S.announce.onSquare(nameOf(a.target), squareName(p.x, p.y)); }
     return "";
   };
   const group = (t: Action["type"], verb: string) => {
     const xs = acts.filter((a) => a.type === t).map(where);
     return xs.length ? `${verb} ${xs.join(", ")}.` : "";
   };
-  announce(`${nameOf(selected.uid)} selected. ${group("play", "Can enter on")} ${group("move", "Can move to")} ${group("flirt", "Can flirt with")}`);
+  announce(`${S.announce.selected(nameOf(selected.uid))} ${group("play", S.announce.canEnter)} ${group("move", S.announce.canMove)} ${group("flirt", S.announce.canFlirt)}`);
 }
 
 /** Click on a hand card: discard it, or select it for playing. */
@@ -289,21 +290,21 @@ function renderStart(): void {
   matchId += 1;
   app.innerHTML = `
     <main class="start">
-      <h1 class="sr-only">Temptation, a trading card game</h1>
+      <h1 class="sr-only">${S.menu.title}</h1>
       <div class="cover-wrap">
-        <img class="cover" src="cover.webp" alt="Cover art: a nun kisses the cheek of a blushing vampire in a moonlit forest.">
-        <span class="age-badge" role="img" aria-label="Age rating: 16 and over">16+</span>
+        <img class="cover" src="cover.webp" alt="${S.menu.coverAlt}">
+        <span class="age-badge" role="img" aria-label="${S.menu.ageBadge}">16+</span>
       </div>
-      <nav class="menu" aria-label="Game mode">
-        <button type="button" data-mode="hotseat">Two players, one screen</button>
-        <button type="button" data-mode="church">Play Church against the AI</button>
-        <button type="button" data-mode="court">Play Court against the AI</button>
-        <button type="button" data-mode="rules">Rules</button>
-        <button type="button" data-mode="glossary">Glossary</button>
-        <button type="button" data-mode="cards">Cards</button>
-        <button type="button" data-mode="settings">Settings</button>
-        <button type="button" data-mode="accessibility">Accessibility</button>
-        <button type="button" data-mode="credits">Credits</button>
+      <nav class="menu" aria-label="${S.menu.nav}">
+        <button type="button" data-mode="hotseat">${S.menu.hotseat}</button>
+        <button type="button" data-mode="church">${S.menu.playAgainstAi("church")}</button>
+        <button type="button" data-mode="court">${S.menu.playAgainstAi("court")}</button>
+        <button type="button" data-mode="rules">${S.menu.rules}</button>
+        <button type="button" data-mode="glossary">${S.menu.glossary}</button>
+        <button type="button" data-mode="cards">${S.menu.cards}</button>
+        <button type="button" data-mode="settings">${S.menu.settings}</button>
+        <button type="button" data-mode="accessibility">${S.menu.accessibility}</button>
+        <button type="button" data-mode="credits">${S.menu.credits}</button>
       </nav>
     </main>`;
   app.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
@@ -327,7 +328,7 @@ let startFocus = "hotseat";
 function renderPage(title: string, body: string, from: string): void {
   app.innerHTML = `
     <main class="doc-page">
-      <nav aria-label="${title} navigation"><button type="button" id="back">Back to menu</button></nav>
+      <nav aria-label="${S.page.navigation(title)}"><button type="button" id="back">${S.page.back}</button></nav>
       <article aria-labelledby="page-title">
         <h1 id="page-title" tabindex="-1">${title}</h1>
         ${body}
@@ -350,20 +351,20 @@ function radioGroup<K extends keyof Settings>(key: K, legend: string, options: [
 /** The Settings or Accessibility page; choices are saved and applied immediately. */
 function renderSettingsPage(kind: "settings" | "accessibility"): void {
   const body = kind === "settings"
-    ? radioGroup("difficulty", "AI difficulty", [
-        ["easy", "Easy", "makes mistakes now and then"],
-        ["normal", "Normal", "plays the best move it can see"],
-        ["hard", "Hard", "also thinks through your reply"],
+    ? radioGroup("difficulty", S.settings.difficulty, [
+        ["easy", ...S.settings.easy],
+        ["normal", ...S.settings.normal],
+        ["hard", ...S.settings.hard],
       ])
-    : radioGroup("motion", "Animations", [
-        ["system", "Follow system setting", "off when the system asks for reduced motion"],
-        ["on", "On", ""],
-        ["off", "Off", ""],
-      ]) + radioGroup("font", "Font", [
-        ["standard", "Standard", ""],
-        ["dyslexic", "Dyslexia-friendly", "OpenDyslexic"],
+    : radioGroup("motion", S.settings.animations, [
+        ["system", ...S.settings.motionSystem],
+        ["on", ...S.settings.motionOn],
+        ["off", ...S.settings.motionOff],
+      ]) + radioGroup("font", S.settings.font, [
+        ["standard", ...S.settings.fontStandard],
+        ["dyslexic", ...S.settings.fontDyslexic],
       ]);
-  renderPage(kind === "settings" ? "Settings" : "Accessibility", `<form class="settings">${body}</form>`, kind);
+  renderPage(kind === "settings" ? S.menu.settings : S.menu.accessibility, `<form class="settings">${body}</form>`, kind);
   app.querySelectorAll<HTMLInputElement>(".settings input").forEach((input) => input.addEventListener("change", () => {
     settings = { ...settings, [input.name]: input.value } as Settings;
     saveSettings(settings);
@@ -373,27 +374,27 @@ function renderSettingsPage(kind: "settings" | "accessibility"): void {
 
 /** The credits from CREDITS.md. */
 function renderCredits(): void {
-  renderPage("Credits", renderMarkdown(creditsMd.replace(/^# Credits\s*\n/, "")), "credits");
+  renderPage(S.menu.credits, renderMarkdown(creditsMd.replace(/^# Credits\s*\n/, "")), "credits");
 }
 
 /** The rules from overview.md. */
 function renderRules(): void {
-  renderPage("Rules", renderMarkdown(overviewMd, 1), "rules");
+  renderPage(S.menu.rules, renderMarkdown(overviewMd, 1), "rules");
 }
 
 /** Announce the side a flippable card now shows. */
-const announceFlip = (name: string) => (f: Faction) => announce(`${name}, ${factionName(f)} side.`);
+const announceFlip = (name: string) => (f: Faction) => announce(S.page.cardSide(name, f));
 
 /** Every card in cards.md, Church side up; click a card to flip it, or flip all with the side buttons. */
 function renderCardsPage(): void {
   const ids = Object.keys(defs).sort((a, b) => defs[a].name.localeCompare(defs[b].name));
-  renderPage("Cards", `
-    <div class="side-switch" role="group" aria-label="Show all cards on one side">
-      <span class="muted">Show all as:</span>
-      <button type="button" data-side="church" aria-pressed="true">Church</button>
-      <button type="button" data-side="court" aria-pressed="false">Court</button>
+  renderPage(S.menu.cards, `
+    <div class="side-switch" role="group" aria-label="${S.page.cardsShowAll}">
+      <span class="muted">${S.page.cardsShowAllAs}</span>
+      <button type="button" data-side="church" aria-pressed="true">${S.side("church")}</button>
+      <button type="button" data-side="court" aria-pressed="false">${S.side("court")}</button>
     </div>
-    <p class="muted">Click a card to see her reverse.</p>
+    <p class="muted">${S.page.cardsHint}</p>
     <div class="card-grid" role="list"></div>`, "cards");
   const grid = app.querySelector(".card-grid")!;
   const sideButtons = [...app.querySelectorAll<HTMLButtonElement>(".side-switch button")];
@@ -412,7 +413,7 @@ function renderCardsPage(): void {
       const side = b.dataset.side as Faction;
       cards.forEach((c) => c.showSide(side));
       press(side);
-      announce(`All cards: ${factionName(side)} side.`);
+      announce(S.page.allCardsSide(side));
     });
   }
 }
@@ -422,7 +423,7 @@ function renderGlossary(): void {
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   const entries = [...glossary].sort((a, b) => a.term.localeCompare(b.term));
   const body = `<dl class="glossary">${entries.map((e) => `<dt>${esc(e.term)}</dt><dd>${esc(e.definition)}</dd>`).join("")}</dl>`;
-  renderPage("Glossary", body, "glossary");
+  renderPage(S.menu.glossary, body, "glossary");
 }
 
 /** Engine log lines with player numbers replaced by faction names and coordinates by square names. */
@@ -439,26 +440,25 @@ function announceChanges(s: GameState): void {
   if (key === lastPhaseKey || !humanTurn()) return;
   lastPhaseKey = key;
   const p = s.players[s.active];
-  const res = p.faction === "church" ? "Wine" : "Blood";
-  if (s.phase === "discard") announce(`Hand limit: you hold ${p.hand.length} cards. Choose a card in your hand to discard.`);
-  if (s.phase === "play") announce(`Your play phase. ${p.wine} ${res}. Choose a card in your hand, then a square.`);
-  if (s.phase === "act") announce(`Your act phase. ${s.actionsLeft} actions.`);
+  if (s.phase === "discard") announce(S.announce.discardPhase(p.hand.length));
+  if (s.phase === "play") announce(S.announce.playPhase(p.wine, p.faction));
+  if (s.phase === "act") announce(S.announce.actPhase(s.actionsLeft));
 }
 
 /** Spoken label of a field square: name, sanctity, occupant, and the action a press would take. */
 function squareLabel(s: GameState, x: number, y: number): string {
-  const parts = [`${squareName(x, y)}, ${s.squares[y][x]}`];
+  const parts = [`${squareName(x, y)}, ${S.sanctity[s.squares[y][x]]}`];
   const c = occupant(s, { x, y });
   if (c) {
-    const who = c.controller === viewer() ? "Yours" : "Opponent's";
-    const resting = c.controller === s.active && !canAct(s, c) ? " Cannot act this turn." : "";
-    const sel = selected?.uid === c.uid ? " Selected." : "";
-    parts.push(`${who}: ${cardLabel(s.defs[c.defId], s.players[c.controller].faction, c.composure)}${resting}${sel}`);
+    const who = c.controller === viewer() ? S.board.yours : S.board.opponents;
+    const resting = c.controller === s.active && !canAct(s, c) ? S.board.resting : "";
+    const sel = selected?.uid === c.uid ? S.board.selected : "";
+    parts.push(S.board.occupant(who, cardLabel(s.defs[c.defId], s.players[c.controller].faction, c.composure)) + resting + sel);
   } else {
-    parts.push("empty");
+    parts.push(S.board.empty);
   }
   const a = selected ? actionAt(x, y) : undefined;
-  if (a) parts.push(`Press to ${describe(a)}`);
+  if (a) parts.push(S.board.pressTo(describe(a)));
   return parts.join(". ");
 }
 
@@ -488,41 +488,40 @@ function render(): void {
   const mine = s.players[me];
   const theirs = s.players[opponent(me)];
   const myTurn = humanTurn();
-  const resource = mine.faction === "church" ? "Wine" : "Blood";
-  const endLabel = { discard: "Discard down to 6", play: "End play phase", act: "End turn" }[s.phase];
-  const whose = mode.kind === "ai" && s.active !== me ? "AI" : factionName(s.players[s.active].faction);
+  const endLabel = S.match.end[s.phase];
+  const whose = mode.kind === "ai" && s.active !== me ? S.match.ai : factionName(s.players[s.active].faction);
   const w = s.squares[0].length;
   const h = s.squares.length;
 
   app.innerHTML = `
     <div class="match ${mine.faction}">
-      <aside class="sidebar" aria-label="Match controls">
-        <h1>Church <i>vs</i> Court</h1>
-        <section class="status" aria-label="Match status">
-          <p><b>${whose}</b>, ${s.phase} phase</p>
-          <p>${resource}: <b>${mine.wine}</b></p>
-          <p>Actions: <b>${s.phase === "act" && s.active === me ? s.actionsLeft : "none"}</b></p>
-          <p class="muted">Opponent: ${theirs.hand.length} in hand, ${theirs.deck.length} in deck</p>
-          <p class="muted">You (${factionName(mine.faction)}): ${mine.deck.length} in deck</p>
+      <aside class="sidebar" aria-label="${S.match.controls}">
+        <h1>${S.match.titleHtml}</h1>
+        <section class="status" aria-label="${S.match.status}">
+          <p>${S.match.whosePhase(`<b>${whose}</b>`, S.match.phase[s.phase])}</p>
+          <p>${S.match.resourceLine(mine.faction)} <b>${mine.wine}</b></p>
+          <p>${S.match.actions} <b>${s.phase === "act" && s.active === me ? s.actionsLeft : S.match.noActions}</b></p>
+          <p class="muted">${S.match.opponentCounts(theirs.hand.length, theirs.deck.length)}</p>
+          <p class="muted">${S.match.yourDeck(mine.faction, mine.deck.length)}</p>
         </section>
         <button type="button" id="end" data-focus="btn:end" ${myTurn && s.phase !== "discard" ? "" : "disabled"}>${endLabel}</button>
-        <button type="button" id="history" data-focus="btn:history" aria-expanded="${historyOpen}" aria-controls="history-log">${historyOpen ? "Hide history" : "History"}</button>
-        ${historyOpen ? `<section id="history-log" class="history-inline" aria-label="History, oldest first" tabindex="0"><ol>${readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("")}</ol></section>` : ""}
+        <button type="button" id="history" data-focus="btn:history" aria-expanded="${historyOpen}" aria-controls="history-log">${historyOpen ? S.match.hideHistory : S.match.history}</button>
+        ${historyOpen ? `<section id="history-log" class="history-inline" aria-label="${S.match.historyLabel}" tabindex="0"><ol>${readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("")}</ol></section>` : ""}
         <div class="spacer"></div>
-        <button type="button" id="surrender" class="danger" data-focus="btn:surrender">Surrender</button>
+        <button type="button" id="surrender" class="danger" data-focus="btn:surrender">${S.match.surrender}</button>
       </aside>
       <main class="board">
         <div class="grid" role="group" style="--cols:${w}"
-          aria-label="Field, Town Square: columns A to ${String.fromCharCode(64 + w)} from west to east, rows 1 to ${h} from top to bottom. Use the arrow keys to move between squares, and I for card details."></div>
+          aria-label="${S.match.field(String.fromCharCode(64 + w), h)}"></div>
       </main>
-      <aside class="inspect" aria-label="Inspected card">
+      <aside class="inspect" aria-label="${S.match.inspected}">
         <div class="inspect-card" aria-hidden="true"></div>
-        <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>Show reverse (F)</button>
-        <p class="hint" aria-hidden="true">Press Shift to keep open</p>
+        <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>${S.match.showReverse}</button>
+        <p class="hint" aria-hidden="true">${S.match.keepOpen}</p>
       </aside>
       <div class="bottom-row">
         <div class="pile-area deck-area">${deckPileHtml(mine.deck.length)}</div>
-        <section class="hand" aria-label="Your hand, ${mine.hand.length} cards. Press I on a card for details."></section>
+        <section class="hand" aria-label="${S.match.hand(mine.hand.length)}"></section>
         <div class="pile-area discard-area">${discardPileHtml(s)}</div>
       </div>
     </div>`;
@@ -566,19 +565,19 @@ function render(): void {
   hand.style.setProperty("--n", String(Math.max(2, mine.hand.length)));
   const playable = new Set(myTurn ? legalActions(s).filter((a) => a.type === "play").map((a) => (a as { uid: number }).uid) : []);
   const discarding = myTurn && s.phase === "discard";
-  if (discarding) hand.insertAdjacentHTML("beforeend", `<p class="banner" aria-hidden="true">Hand limit: click a card to discard it</p>`);
+  if (discarding) hand.insertAdjacentHTML("beforeend", `<p class="banner" aria-hidden="true">${S.match.handLimitBanner}</p>`);
   const hidden = handOver && s.winner === null;
-  if (hidden) hand.setAttribute("aria-label", `Hand of ${mine.hand.length} cards, hidden until the next player continues`);
+  if (hidden) hand.setAttribute("aria-label", S.match.handHidden(mine.hand.length));
   for (const uid of hidden ? [] : mine.hand) {
     const def = s.defs[s.cards[uid].defId];
-    const hint = discarding ? " Press to discard." : playable.has(uid) ? " Can be played." : "";
+    const hint = discarding ? S.match.pressToDiscard : playable.has(uid) ? S.match.canBePlayed : "";
     const peek = peeking.has(uid);
     const shownSide = peek ? otherSide(mine.faction) : mine.faction;
     const label = peek
-      ? `Showing her reverse: ${cardLabel(def, shownSide)} In your hand she plays as ${factionName(mine.faction)}.${hint}`
+      ? S.match.showingReverse(cardLabel(def, shownSide), mine.faction) + hint
       : cardLabel(def, mine.faction) + hint;
     const el = cardEl(def, shownSide, { mode: "button", label, description: peek ? "" : otherSideText(def, mine.faction) });
-    if (peek) el.classList.add("peeking");
+    if (peek) { el.classList.add("peeking"); el.dataset.tag = S.card.reverseTag; }
     el.dataset.focus = `hand:${uid}`;
     el.setAttribute("aria-pressed", String(selected?.uid === uid));
     if (playable.has(uid)) el.classList.add("playable");
@@ -621,14 +620,14 @@ function render(): void {
   if (panel === "discards") dialogFocus = renderDiscardView();
   if (detail) dialogFocus = renderDetail(detail.uid);
   if (handOver && s.winner === null) {
-    dialogFocus = overlay(`${factionName(s.players[s.active].faction)}'s turn`, `<p>Pass the device, then continue.</p>
-      <button type="button" id="ready">Continue</button>`);
+    dialogFocus = overlay(S.dialog.handOverTitle(s.players[s.active].faction), `<p>${S.dialog.handOverText}</p>
+      <button type="button" id="ready">${S.dialog.continue}</button>`);
     app.querySelector("#ready")!.addEventListener("click", () => { handOver = false; pendingFocus = "btn:end"; render(); });
   }
   if (confirmingSurrender && s.winner === null) {
-    dialogFocus = overlay("Surrender this match?", `<p>The match ends and your opponent wins.</p>
-      <div class="dialog-buttons"><button type="button" id="keep-playing">Keep playing</button>
-      <button type="button" id="confirm-surrender" class="danger">Surrender</button></div>`);
+    dialogFocus = overlay(S.dialog.surrenderTitle, `<p>${S.dialog.surrenderText}</p>
+      <div class="dialog-buttons"><button type="button" id="keep-playing">${S.dialog.keepPlaying}</button>
+      <button type="button" id="confirm-surrender" class="danger">${S.dialog.surrender}</button></div>`);
     const cancel = () => { confirmingSurrender = false; pendingFocus = "btn:surrender"; render(); };
     app.querySelector("#keep-playing")!.addEventListener("click", cancel);
     app.querySelector("#confirm-surrender")!.addEventListener("click", () => {
@@ -639,9 +638,9 @@ function render(): void {
     app.querySelector(".overlay")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); cancel(); } });
   }
   if (s.winner !== null) {
-    const youWon = mode.kind === "ai" ? (s.winner === mode.human ? "You win!" : "The AI wins.") : "";
-    dialogFocus = overlay(`${factionName(s.players[s.winner].faction)} wins`, `<p>${youWon}</p>
-      <button type="button" id="again">Play again</button><button type="button" id="menu">Main menu</button>`);
+    const youWon = mode.kind === "ai" ? (s.winner === mode.human ? S.dialog.youWin : S.dialog.aiWins) : "";
+    dialogFocus = overlay(S.dialog.wins(s.players[s.winner].faction), `<p>${youWon}</p>
+      <button type="button" id="again">${S.dialog.playAgain}</button><button type="button" id="menu">${S.dialog.mainMenu}</button>`);
     app.querySelector("#again")!.addEventListener("click", () => startGame(mode));
     app.querySelector("#menu")!.addEventListener("click", renderStart);    const outcome = mode.kind === "ai" && s.winner !== mode.human ? "lose" : "win";
     dressEndScreen(s.players[s.winner].faction, outcome);
@@ -660,13 +659,13 @@ function render(): void {
 
 /** Face-down deck pile with the remaining count; opens the deck dialog. */
 function deckPileHtml(left: number): string {
-  const label = left === 0 ? "My deck: empty" : `My deck: ${left} ${left === 1 ? "card" : "cards"} left`;
+  const label = S.piles.deck(left);
   const stack = left === 0
-    ? '<span class="pile-empty" aria-hidden="true">Deck empty</span>'
+    ? `<span class="pile-empty" aria-hidden="true">${S.piles.deckEmpty}</span>`
     : Array.from({ length: Math.min(3, left) }, () => '<span class="card card-back" aria-hidden="true"></span>').join("");
   return `<button type="button" id="deck" class="pile${left === 0 ? " empty" : ""}" data-focus="btn:deck" aria-label="${label}">
     <span class="pile-stack">${stack}</span>
-    <span class="pile-caption" aria-hidden="true">Deck${left ? ` (${left})` : ""}</span></button>`;
+    <span class="pile-caption" aria-hidden="true">${S.piles.deckCaption(left)}</span></button>`;
 }
 
 /** Discard pile: sent-home girls and married couples; opens the Sent Home / Wedding Registry dialog. */
@@ -674,13 +673,13 @@ function discardPileHtml(s: GameState): string {
   const sent = s.players[0].discard.length + s.players[1].discard.length;
   const wed = s.married.length;
   const total = sent + wed;
-  const label = `Discard pile: ${sent} sent home, ${couples(s).length} ${couples(s).length === 1 ? "couple" : "couples"} married`;
+  const label = S.piles.discards(sent, couples(s).length);
   const stack = total === 0
-    ? '<span class="pile-empty" aria-hidden="true">Empty</span>'
+    ? `<span class="pile-empty" aria-hidden="true">${S.piles.discardsEmpty}</span>`
     : Array.from({ length: Math.min(3, total) }, () => '<span class="card card-back" aria-hidden="true"></span>').join("");
   return `<button type="button" id="discards" class="pile${total === 0 ? " empty" : ""}" data-focus="btn:discards" aria-label="${label}">
     <span class="pile-stack">${stack}</span>
-    <span class="pile-caption" aria-hidden="true">Discards${total ? ` (${total})` : ""}</span></button>`;
+    <span class="pile-caption" aria-hidden="true">${S.piles.discardsCaption(total)}</span></button>`;
 }
 
 /** Fly newly seen hand cards in from the deck pile (the opening hand deals one by one). */
@@ -701,24 +700,24 @@ function renderDiscardView(): HTMLElement {
   const s = state!;
   app.insertAdjacentHTML("beforeend", `
     <div class="overlay deck-view discard-view"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="discard-title">
-      <h2 id="discard-title">Discard pile</h2>
-      <div class="tabs" role="tablist" aria-label="Discard pile">
-        <button type="button" role="tab" id="tab-sent" aria-controls="panel-sent" aria-selected="${discardTab === "sent"}" tabindex="${discardTab === "sent" ? 0 : -1}">Sent Home</button>
-        <button type="button" role="tab" id="tab-registry" aria-controls="panel-registry" aria-selected="${discardTab === "registry"}" tabindex="${discardTab === "registry" ? 0 : -1}">Wedding Registry</button>
+      <h2 id="discard-title">${S.piles.discardTitle}</h2>
+      <div class="tabs" role="tablist" aria-label="${S.piles.discardTitle}">
+        <button type="button" role="tab" id="tab-sent" aria-controls="panel-sent" aria-selected="${discardTab === "sent"}" tabindex="${discardTab === "sent" ? 0 : -1}">${S.piles.sentHome}</button>
+        <button type="button" role="tab" id="tab-registry" aria-controls="panel-registry" aria-selected="${discardTab === "registry"}" tabindex="${discardTab === "registry" ? 0 : -1}">${S.piles.registry}</button>
       </div>
       <div role="tabpanel" id="panel-sent" aria-labelledby="tab-sent" ${discardTab === "sent" ? "" : "hidden"}></div>
       <div role="tabpanel" id="panel-registry" aria-labelledby="tab-registry" ${discardTab === "registry" ? "" : "hidden"}></div>
-      <button type="button" id="close-discards">Close</button>
+      <button type="button" id="close-discards">${S.dialog.close}</button>
     </div></div>`);
 
   const sentPanel = app.querySelector<HTMLElement>("#panel-sent")!;
   for (const list of sentHome(s)) {
     const total = list.groups.reduce((n, g) => n + g.count, 0);
-    sentPanel.insertAdjacentHTML("beforeend", `<h3>${factionName(list.faction)}'s girls sent home (${total})</h3>`);
+    sentPanel.insertAdjacentHTML("beforeend", `<h3>${S.piles.sentHomeOf(list.faction, total)}</h3>`);
     const grid = document.createElement("div");
     grid.className = "card-grid";
     grid.setAttribute("role", "list");
-    if (list.groups.length === 0) grid.innerHTML = '<p role="listitem" class="muted">Nobody yet.</p>';
+    if (list.groups.length === 0) grid.innerHTML = `<p role="listitem" class="muted">${S.piles.nobody}</p>`;
     for (const g of list.groups) {
       const item = document.createElement("div");
       item.setAttribute("role", "listitem");
@@ -730,7 +729,7 @@ function renderDiscardView(): HTMLElement {
 
   const regPanel = app.querySelector<HTMLElement>("#panel-registry")!;
   const pairs = couples(s);
-  if (pairs.length === 0) regPanel.innerHTML = '<p class="muted">No weddings yet.</p>';
+  if (pairs.length === 0) regPanel.innerHTML = `<p class="muted">${S.piles.noWeddings}</p>`;
   const list = document.createElement("ol");
   list.className = "registry";
   pairs.forEach(([a, b], i) => {
@@ -739,7 +738,7 @@ function renderDiscardView(): HTMLElement {
     const nameB = s.defs[s.cards[b].defId].name;
     const sideA = s.players[s.cards[a].controller].faction;
     const sideB = s.players[s.cards[b].controller].faction;
-    li.setAttribute("aria-label", `Wedding ${i + 1}: ${nameA} (${factionName(sideA)}) and ${nameB} (${factionName(sideB)})`);
+    li.setAttribute("aria-label", S.piles.wedding(i + 1, nameA, sideA, nameB, sideB));
     const ca = cardEl(s.defs[s.cards[a].defId], sideA, { mode: "preview" });
     const cb = cardEl(s.defs[s.cards[b].defId], sideB, { mode: "preview" });
     li.append(ca);
@@ -772,13 +771,13 @@ function renderDeckView(): HTMLElement {
   const ids = [...counts.keys()].sort((a, b) => s.defs[a].name.localeCompare(s.defs[b].name));
   app.insertAdjacentHTML("beforeend", `
     <div class="overlay deck-view"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="deck-title">
-      <h2 id="deck-title">My deck: ${mine.deck.length} cards left</h2>
-      <p class="muted">Sorted by name, so the draw order stays hidden. Click a card to see her reverse.</p>
+      <h2 id="deck-title">${S.piles.deckTitle(mine.deck.length)}</h2>
+      <p class="muted">${S.piles.deckHint}</p>
       <div class="card-grid" role="list"></div>
-      <button type="button" id="close-deck">Close</button>
+      <button type="button" id="close-deck">${S.dialog.close}</button>
     </div></div>`);
   const grid = app.querySelector(".deck-view .card-grid")!;
-  if (ids.length === 0) grid.innerHTML = '<p role="listitem">Your deck is empty.</p>';
+  if (ids.length === 0) grid.innerHTML = `<p role="listitem">${S.piles.deckEmptyText}</p>`;
   for (const id of ids) {
     const item = document.createElement("div");
     item.setAttribute("role", "listitem");
@@ -847,7 +846,7 @@ function drawInspect(): void {
   if (!box || !state) return;
   box.replaceChildren();
   if (inspected === null) {
-    box.innerHTML = '<p class="muted">Hover a girl on the field to inspect her.</p>';
+    box.innerHTML = `<p class="muted">${S.match.inspectEmpty}</p>`;
     return;
   }
   const c = state.cards[inspected];
@@ -855,13 +854,13 @@ function drawInspect(): void {
   const peek = peeking.has(c.uid);
   const composure = c.zone === "field" && !peek ? c.composure : undefined;
   const card = cardEl(state.defs[c.defId], peek ? otherSide(ownSide) : ownSide, { composure, mode: "preview" });
-  if (peek) card.classList.add("peeking");
+  if (peek) { card.classList.add("peeking"); card.dataset.tag = S.card.reverseTag; }
   box.append(card);
   const btn = app.querySelector<HTMLButtonElement>(".inspect-peek");
   if (btn) {
     btn.hidden = false;
     btn.setAttribute("aria-pressed", String(peek));
-    btn.setAttribute("aria-label", `Show ${state.defs[c.defId].name}'s reverse`);
+    btn.setAttribute("aria-label", S.match.showReverseOf(state.defs[c.defId].name));
   }
 }
 
@@ -872,7 +871,7 @@ function togglePeek(uid: number): void {
   else peeking.add(uid);
   const c = state.cards[uid];
   const side = peeking.has(uid) ? otherSide(state.players[c.controller].faction) : state.players[c.controller].faction;
-  announce(`${state.defs[c.defId].name}: showing her ${factionName(side)} side.`);
+  announce(S.match.showingSide(state.defs[c.defId].name, side));
   render();
 }
 
@@ -888,10 +887,10 @@ function renderDetail(uid: number): HTMLElement {
   const card = cardEl(s.defs[c.defId], faction, { composure: c.zone === "field" ? c.composure : undefined, mode: "detail" });
   app.insertAdjacentHTML("beforeend", `
     <div class="overlay detail"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-      <h2 id="detail-title">Card details</h2>
+      <h2 id="detail-title">${S.dialog.cardDetails}</h2>
       <div class="detail-card"></div>
-      <p class="muted">Tab through highlighted words for their meaning. Escape to close.</p>
-      <button type="button" id="close-detail">Close</button>
+      <p class="muted">${S.dialog.cardDetailsHint}</p>
+      <button type="button" id="close-detail">${S.dialog.close}</button>
     </div></div>`);
   app.querySelector(".detail-card")!.append(card);
   const close = () => { pendingFocus = detail!.returnTo; detail = null; render(); };

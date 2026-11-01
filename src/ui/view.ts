@@ -3,6 +3,7 @@ import type { CharacterDef, Faction } from "../types.ts";
 import type { GlossaryEntry } from "../glossary.ts";
 import { splitTerms, stripMarkers, termsIn } from "../glossary.ts";
 import { FLIP_HALF_MS } from "../config/ui.ts";
+import { S } from "../strings/index.ts";
 
 let glossary: GlossaryEntry[] = [];
 
@@ -31,15 +32,13 @@ export function squareName(x: number, y: number): string {
   return `${String.fromCharCode(65 + x)}${y + 1}`;
 }
 
-const sideName = (f: Faction) => (f === "church" ? "Church" : "Court");
 
 /** Spoken description of a card face: name, side, cost, stats and text. */
 export function cardLabel(def: CharacterDef, faction: Faction, composure?: number): string {
   const f = def.faces[faction];
-  const comp = composure === undefined ? `Composure ${f.composure}` : `Composure ${composure} of ${f.composure}`;
-  const text = f.text.map((t) => (f.unknown.includes(t) ? `${stripMarkers(t)} (not implemented yet)` : stripMarkers(t))).join(" ");
-  const cost = `cost ${f.cost} ${faction === "church" ? "Wine" : "Blood"}`;
-  return `${f.name}, ${sideName(faction)}, ${cost}, Charm ${f.charm}, ${comp}.${text ? " " + text : ""}`;
+  const comp = composure === undefined ? S.card.composure(f.composure) : S.card.composureOf(composure, f.composure);
+  const text = f.text.map((t) => (f.unknown.includes(t) ? stripMarkers(t) + S.card.notImplemented : stripMarkers(t))).join(" ");
+  return S.card.label(f.name, faction, f.cost, f.charm, comp, text);
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -86,7 +85,7 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
   const focusable = opts.mode === "detail";
   const text = f.text.map((t) =>
     f.unknown.includes(t)
-      ? `<span class="unimpl" title="not implemented in the engine yet">${richText(t, focusable)}${focusable ? '<span class="sr-only"> (not implemented yet)</span>' : ""}</span>`
+      ? `<span class="unimpl" title="${S.card.notImplementedTitle}">${richText(t, focusable)}${focusable ? `<span class="sr-only">${S.card.notImplemented}</span>` : ""}</span>`
       : richText(t, focusable),
   ).join(" ");
   const comp = opts.composure ?? f.composure;
@@ -95,7 +94,7 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
   const a11y = {
     button: `type="button" aria-label="${esc(opts.label ?? cardLabel(def, faction))}"${description ? ` aria-description="${esc(description)}"` : ""}`,
     preview: 'aria-hidden="true"',
-    detail: `tabindex="-1" role="group" aria-label="${esc(f.name)}, ${sideName(faction)}, cost ${f.cost} ${faction === "church" ? "Wine" : "Blood"}, Charm ${f.charm}, Composure ${comp} of ${f.composure}"`,
+    detail: `tabindex="-1" role="group" aria-label="${esc(S.card.detailLabel(f.name, faction, f.cost, f.charm, comp, f.composure))}"`,
   }[opts.mode];
   return html(`
     <${tag} class="card ${faction}" ${a11y}>
@@ -118,8 +117,8 @@ export type FlipCard = HTMLElement & { showSide(side: Faction): void };
 
 export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Faction) => void, count?: number): FlipCard {
   const other = (f: Faction): Faction => (f === "church" ? "court" : "church");
-  const copies = count && count > 1 ? ` ${count} copies.` : "";
-  const label = (f: Faction) => `${cardLabel(def, f)}${copies} Press to flip to the ${sideName(other(f))} side.`;
+  const copies = count && count > 1 ? S.card.copies(count) : "";
+  const label = (f: Faction) => cardLabel(def, f) + copies + S.card.flipTo(other(f));
   const btn = html(`
     <button type="button" class="flip-card">
       <span class="flip-inner"></span>
@@ -157,7 +156,7 @@ export function tileEl(def: CharacterDef, faction: Faction, composure: number, r
     <span class="tile ${faction} ${resting ? "resting" : ""}" aria-hidden="true">
       <img src="${portraitUrl(def, faction)}" alt="" draggable="false">
       <span class="slot item"></span>
-      <span class="slot condition">${resting ? "Zz" : ""}</span>
+      <span class="slot condition">${resting ? S.card.resting : ""}</span>
       <span class="badge charm">${icon("charm")}${f.charm}</span>
       <span class="badge composure ${composure < f.composure ? "hurt" : ""}">${composure}${icon("composure")}</span>
     </span>`);
@@ -168,13 +167,13 @@ export const otherSide = (f: Faction): Faction => (f === "church" ? "court" : "c
 
 /** Spoken summary of a card's other side, for accessible descriptions. */
 export function otherSideText(def: CharacterDef, shown: Faction): string {
-  return `Reverse: ${cardLabel(def, otherSide(shown))}`;
+  return S.card.reverse(cardLabel(def, otherSide(shown)));
 }
 
 /** Small round button that shows a card's other side in place. */
 export function peekButton(name: string, pressed: boolean): HTMLButtonElement {
   return html(`
-    <button type="button" class="peek-btn" aria-pressed="${pressed}" aria-label="Show ${esc(name)}'s reverse" title="Show reverse (F)">
+    <button type="button" class="peek-btn" aria-pressed="${pressed}" aria-label="${esc(S.card.showReverseOf(name))}" title="${S.card.showReverseTitle}">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>
     </button>`) as HTMLButtonElement;
 }
