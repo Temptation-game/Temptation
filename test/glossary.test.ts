@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseGlossary, splitTerms, termsIn } from "../src/glossary.ts";
+import { parseGlossary, splitTerms, stripMarkers, termsIn, unknownTerms } from "../src/glossary.ts";
+import { parseCards } from "../src/cards.ts";
 
 const g = parseGlossary("# Glossary\n\nTempt: Send her away.\nAdventurous: Acts at once.\nnot a term line\n");
 
@@ -13,15 +14,28 @@ test("parses Term: definition lines and skips the rest", () => {
   ]);
 });
 
-test("matches inflected words case-insensitively and keeps the text intact", () => {
-  const text = "Adventurous. When she would have been tempted, run.";
+test("only [marked] words become terms; brackets are dropped; inflections match by prefix", () => {
+  const text = "[Adventurous]. When she would have been [tempted], run. Tempt is unmarked.";
   const runs = splitTerms(text, g);
-  assert.equal(runs.map((r) => r.text).join(""), text);
+  assert.equal(runs.map((r) => r.text).join(""), stripMarkers(text));
   assert.deepEqual(runs.filter((r) => r.term).map((r) => [r.text, r.term!.term]), [["Adventurous", "Adventurous"], ["tempted", "Tempt"]]);
 });
 
+test("a marked word with no glossary entry renders as plain text and is reported", () => {
+  const runs = splitTerms("Bakes [bread].", g);
+  assert.deepEqual(runs, [{ text: "Bakes " }, { text: "bread" }, { text: "." }]);
+  assert.deepEqual(unknownTerms("Bakes [bread]. [Tempts].", g), ["bread"]);
+});
+
 test("termsIn lists each term once, in order of first use", () => {
-  assert.deepEqual(termsIn("Tempt her. Adventurous. Tempted again.", g).map((t) => t.term), ["Tempt", "Adventurous"]);
+  assert.deepEqual(termsIn("[Tempt] her. [Adventurous]. [Tempted] again.", g).map((t) => t.term), ["Tempt", "Adventurous"]);
+});
+
+test("ability matching ignores [term] markers", () => {
+  const d = parseCards("## X\nn 1 1 1\n[Adventurous].\nv 1 1 1\nWhen this character would have been [tempted], [convert] her instead.\n").x;
+  assert.deepEqual(d.faces.church.abilities, ["adventurous"]);
+  assert.deepEqual(d.faces.court.abilities, ["convertInsteadOfTempt"]);
+  assert.deepEqual(d.faces.court.unknown, []);
 });
 
 test("glossary.md in the repo parses", () => {

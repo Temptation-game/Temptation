@@ -1,7 +1,7 @@
 /** DOM builders for cards and field tiles; no game logic lives here. */
 import type { CharacterDef, Faction } from "../types.ts";
 import type { GlossaryEntry } from "../glossary.ts";
-import { splitTerms, termsIn } from "../glossary.ts";
+import { splitTerms, stripMarkers, termsIn } from "../glossary.ts";
 
 let glossary: GlossaryEntry[] = [];
 
@@ -36,7 +36,7 @@ const sideName = (f: Faction) => (f === "church" ? "Church" : "Court");
 export function cardLabel(def: CharacterDef, faction: Faction, composure?: number): string {
   const f = def.faces[faction];
   const comp = composure === undefined ? `Composure ${f.composure}` : `Composure ${composure} of ${f.composure}`;
-  const text = f.text.map((t) => (f.unknown.includes(t) ? `${t} (not implemented yet)` : t)).join(" ");
+  const text = f.text.map((t) => (f.unknown.includes(t) ? `${stripMarkers(t)} (not implemented yet)` : stripMarkers(t))).join(" ");
   const cost = `cost ${f.cost} ${faction === "church" ? "Wine" : "Blood"}`;
   return `${f.name}, ${sideName(faction)}, ${cost}, Charm ${f.charm}, ${comp}.${text ? " " + text : ""}`;
 }

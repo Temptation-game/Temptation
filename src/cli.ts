@@ -5,15 +5,18 @@ import { readFileSync } from "node:fs";
 import type { CharacterDef, DeckList, GameState, LocationDef } from "./types.ts";
 import { apply, newGame } from "./engine.ts";
 import { parseCards } from "./cards.ts";
+import { parseGlossary, unknownTerms } from "./glossary.ts";
 import { randomAction } from "./ai/random.ts";
 
 const MAX_STEPS = 2000;
 
 const load = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
+const glossary = parseGlossary(readFileSync(new URL("../glossary.md", import.meta.url), "utf8"));
 const defs: Record<string, CharacterDef> = parseCards(readFileSync(new URL("../cards.md", import.meta.url), "utf8"));
 for (const d of Object.values(defs)) {
   for (const [side, fc] of Object.entries(d.faces)) {
     for (const u of fc.unknown) console.log(`unimplemented (${d.name}, ${side}): ${u}`);
+    for (const w of unknownTerms(fc.text.join(" "), glossary)) console.log(`not in glossary (${d.name}, ${side}): [${w}]`);
   }
 }
 const town: LocationDef = load("../data/locations/town_square.json");

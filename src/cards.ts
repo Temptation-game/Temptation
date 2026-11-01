@@ -2,14 +2,15 @@
  * Usage: const defs = parseCards(readFileSync("cards.md", "utf8"));
  */
 import type { AbilityId, CharacterDef, Faction, FaceStats } from "./types.ts";
+import { stripMarkers } from "./glossary.ts";
 
-/** Implemented ability sentences, normalised (lower case, no final full stop). Keywords come from glossary.md. */
+/** Implemented ability sentences, normalised (lower case, no [term] markers, no final full stop). Keywords come from glossary.md. */
 const ABILITY_TEXT: Record<string, AbilityId> = {
   "adventurous": "adventurous",
   "when this character would have been tempted, convert her instead": "convertInsteadOfTempt",
 };
 
-const normalise = (sentence: string) => sentence.trim().replace(/\.$/, "").toLowerCase();
+const normalise = (sentence: string) => stripMarkers(sentence).trim().replace(/\.$/, "").toLowerCase();
 
 /** Split a description line into sentences, keeping their full stops. */
 function sentences(line: string): string[] {
