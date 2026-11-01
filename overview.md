@@ -10,7 +10,7 @@ There are three types of cards: a Character, an Item, and an Incantation.
 
 Each Character card has two sides, who they are as a nun and who they are as a vampire.
 
-During the game, a card on the field may get flipped and be given to your opponent into their hand. Such card is called *tempted*. Sometimes a card can also be flipped without leaving the field - when you do so, you *convert* it.
+During the game, a card on the field may get flipped and be given to your opponent into their hand. Such a card is called *tempted*. Sometimes a card can also be flipped without leaving the field - when you do so, you *convert* it.
 
 Item and Incantation cards are auxiliary. You never start with these cards in your deck.
 
@@ -55,11 +55,11 @@ To play a Character, pay her cost in Wine/Blood, then place her on the field in 
 
 Each Character has Charm and Composure. Some Characters may also have a Special or Chant specified.
 
-As a part of your Act phase, you can have your character act (a character is yours as long as she is facing your side's up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (both your and an opposite-faction Character in an adjacent square lose Composure). The number of Composure points a character loses equals to her interlocutor's *Charm* + modifiers.
+As a part of your Act phase, you can have your character act (a character is yours as long as she is facing your side up). The default actions are to *move* to an adjacent unoccupied square, *drop* or *pick up* an item in your square, or to *flirt* (both your and an opposite-faction Character in an adjacent square lose Composure). The number of Composure points a character loses equals her interlocutor's *Charm* + modifiers.
 
 Actions can be also spent on triggering a Special or a Chant. Some of them may cost multiple actions.
 
-A character does not act same turn as she enters unless she is *Adventurous*.
+A character does not act the same turn as she enters unless she is *Adventurous*.
 
 A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. Next time she is played, she enters with full Composure\*.
 
