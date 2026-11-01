@@ -8,6 +8,12 @@ Priority may not match the chronological order. Pick them up in order of effort 
 
 - [ ] Need to flesh out terminology. Rules separate Discard pile and Married couples, in the interface they're a special part of Discard. Needs discussion.
 
+## Your backlog
+
+Tasks for you (not Claude). Tick them off here; Claude picks up any follow-up work they need.
+
+- [ ] Add the "Temptation" title back onto the cover art. The new `images/cover.png` has no title painted in, so the start screen currently shows no visible game name (only screen-reader text). After you replace the image, Claude regenerates `public/cover.webp` and refreshes the cover snapshot baseline.
+
 ## Large features
 
 Like Future features, but partially fleshed out. Ask when picking up.
