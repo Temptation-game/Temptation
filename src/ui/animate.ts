@@ -37,9 +37,11 @@ export async function animateMove(from: HTMLElement, to: HTMLElement): Promise<v
   ).finished;
 }
 
-/** Flirt: the flirter leans in, a heart pops between them, both blush and show their Composure loss; leavers fade out. */
+/** Flirt: the flirter leans in, a heart pops between them, both blush and show their Composure loss.
+ * Tempted girls then fade out; a married pair glows together and fades out at the same moment.
+ */
 export async function animateFlirt(
-  attacker: HTMLElement, target: HTMLElement, lossAttacker: number, lossTarget: number, leaving: HTMLElement[],
+  attacker: HTMLElement, target: HTMLElement, lossAttacker: number, lossTarget: number, leaving: HTMLElement[], married: boolean,
 ): Promise<void> {
   const aTile = attacker.querySelector<HTMLElement>(".tile");
   const tTile = target.querySelector<HTMLElement>(".tile");
@@ -76,6 +78,11 @@ export async function animateFlirt(
     ).finished.then(() => el.remove());
   });
   await lean.finished;
+  if (married) {
+    await Promise.all([pop.finished.then(() => heart.remove()), ...numbers]);
+    await marriageGlow(aTile, tTile, a, t);
+    return;
+  }
   const fades = leaving.map((sq) => sq.querySelector<HTMLElement>(".tile")?.animate(
     [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.6)" }],
     { duration: 320, easing: "ease-in", fill: "forwards" },
@@ -95,4 +102,44 @@ export function animateEnter(square: HTMLElement): void {
     ],
     { duration: 340, easing: "ease-out" },
   );
+}
+
+/** A discarded hand card tips over, sinks and fades. */
+export async function animateDiscard(card: HTMLElement): Promise<void> {
+  if (reducedMotion()) return;
+  card.style.zIndex = "5";
+  await card.animate(
+    [
+      { transform: "translateY(0) rotate(0deg)", opacity: 1 },
+      { transform: "translateY(-14px) rotate(-4deg)", opacity: 1, offset: 0.25 },
+      { transform: "translateY(90px) rotate(14deg)", opacity: 0 },
+    ],
+    { duration: 420, easing: "ease-in", fill: "forwards" },
+  ).finished;
+}
+
+/** Both newlyweds glow together under a rising heart, then fade out at the same moment. */
+async function marriageGlow(a: HTMLElement, b: HTMLElement, ca: { x: number; y: number }, cb: { x: number; y: number }): Promise<void> {
+  const glow = [
+    { boxShadow: "0 0 0 0 #fff4c800", filter: "brightness(1)" },
+    { boxShadow: "0 0 26px 10px #fff4c8ee", filter: "brightness(1.35)", offset: 0.6 },
+    { boxShadow: "0 0 30px 12px #fff4c8ff", filter: "brightness(1.5)" },
+  ];
+  const heart = floater("heart wedding", HEART, (ca.x + cb.x) / 2, (ca.y + cb.y) / 2);
+  const rise = heart.animate(
+    [{ transform: "translate(-50%, -50%) scale(0.4)", opacity: 0 }, { transform: "translate(-50%, -90%) scale(1.5)", opacity: 1 }],
+    { duration: 700, easing: "ease-out", fill: "forwards" },
+  );
+  await Promise.all([
+    a.animate(glow, { duration: 700, fill: "forwards" }).finished,
+    b.animate(glow, { duration: 700, fill: "forwards" }).finished,
+    rise.finished,
+  ]);
+  const out = [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.85)" }];
+  await Promise.all([
+    a.animate(out, { duration: 450, easing: "ease-in", fill: "forwards" }).finished,
+    b.animate(out, { duration: 450, easing: "ease-in", fill: "forwards" }).finished,
+    heart.animate([{ opacity: 1 }, { opacity: 0, transform: "translate(-50%, -140%) scale(1.6)" }], { duration: 450, fill: "forwards" }).finished,
+  ]);
+  heart.remove();
 }

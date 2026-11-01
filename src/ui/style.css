@@ -233,3 +233,8 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .floater.heart svg { width: 44px; height: 44px; fill: var(--flirt); filter: drop-shadow(0 0 6px #ff5fa2aa); display: block; }
 .floater.loss { font-weight: bold; font-size: 20px; color: #ff8ab8; text-shadow: 0 1px 3px #000; }
 .dialog-buttons { display: flex; gap: 10px; justify-content: center; }
+.floater.wedding svg { fill: #fff4c8; filter: drop-shadow(0 0 10px #ffd27a); }
+.card.card-back {
+  background: repeating-linear-gradient(45deg, #3a3740 0 8px, #2e2b33 8px 16px) border-box;
+  border-color: #46424c; outline-color: #5a5560; cursor: default; aspect-ratio: 2 / 3;
+}

@@ -9,7 +9,7 @@ import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
-import { animateEnter, animateFlirt, animateMove } from "./animate.ts";
+import { animateDiscard, animateEnter, animateFlirt, animateMove } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
@@ -105,11 +105,17 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
   const prev = state!;
   const next = apply(prev, a);
   animating = true;
+  app.querySelectorAll(".square").forEach((sq) => sq.classList.remove("target-play", "target-move", "target-flirt"));
+  app.querySelectorAll(".tile.selected").forEach((t) => t.classList.remove("selected"));
   try {
     if (a.type === "move") {
       const from = squareEl(prev.cards[a.uid].pos!);
       const to = squareEl(a.to);
       if (from && to) await animateMove(from, to);
+    }
+    if (a.type === "discard") {
+      const card = app.querySelector<HTMLElement>(`[data-focus="hand:${a.uid}"]`);
+      if (card) await animateDiscard(card);
     }
     if (a.type === "flirt") {
       const att = prev.cards[a.uid];
@@ -117,7 +123,8 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
       const leaving = [att, tgt].filter((c) => next.cards[c.uid].zone !== "field").map((c) => squareEl(c.pos!)!);
       const aSq = squareEl(att.pos!);
       const tSq = squareEl(tgt.pos!);
-      if (aSq && tSq) await animateFlirt(aSq, tSq, face(prev, a.target).charm, face(prev, a.uid).charm, leaving);
+      const married = next.cards[att.uid].zone === "married";
+      if (aSq && tSq) await animateFlirt(aSq, tSq, face(prev, a.target).charm, face(prev, a.uid).charm, leaving, married);
     }
   } finally {
     animating = false;
@@ -468,7 +475,9 @@ function render(): void {
   const playable = new Set(myTurn ? legalActions(s).filter((a) => a.type === "play").map((a) => (a as { uid: number }).uid) : []);
   const discarding = myTurn && s.phase === "discard";
   if (discarding) hand.insertAdjacentHTML("beforeend", `<p class="banner" aria-hidden="true">Hand limit: click a card to discard it</p>`);
-  for (const uid of mine.hand) {
+  const hidden = handOver && s.winner === null;
+  if (hidden) hand.setAttribute("aria-label", `Hand of ${mine.hand.length} cards, hidden until the next player continues`);
+  for (const uid of hidden ? [] : mine.hand) {
     const def = s.defs[s.cards[uid].defId];
     const hint = discarding ? " Press to discard." : playable.has(uid) ? " Can be played." : "";
     const el = cardEl(def, mine.faction, { mode: "button", label: cardLabel(def, mine.faction) + hint });
@@ -479,6 +488,10 @@ function render(): void {
     if (selected?.uid === uid) el.classList.add("selected");
     el.addEventListener("click", () => onHandClick(uid));
     hand.append(el);
+  }
+
+  if (hidden) {
+    for (let i = 0; i < mine.hand.length; i++) hand.insertAdjacentHTML("beforeend", '<div class="card card-back" aria-hidden="true"></div>');
   }
 
   app.querySelector("#end")!.addEventListener("click", () => {
@@ -638,9 +651,13 @@ document.addEventListener("keydown", (e) => {
   render();
 });
 
+/** Set when the Vite dev server reloads the page after a code change; the leave-page guard stands down then. */
+let devReload = false;
+import.meta.hot?.on("vite:beforeFullReload", () => { devReload = true; });
+
 /** Ask for confirmation before closing or reloading the tab during an unfinished match. */
 window.addEventListener("beforeunload", (e) => {
-  if (state && state.winner === null) e.preventDefault();
+  if (state && state.winner === null && !devReload) e.preventDefault();
 });
 
 /** Escape clears the current selection. */
