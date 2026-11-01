@@ -6,6 +6,12 @@
   "description": "Temptation: a tactical card game about lesbian nuns and vampires",
   "scripts": {
     "test": "node --test test/*.test.ts",
-    "sim": "node src/cli.ts"
+    "sim": "node src/cli.ts",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5"
   }
 }
