@@ -107,31 +107,38 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
     </${tag}>`);
 }
 
-/** A card that turns over on click to show its other side; `count` adds an "xN" copies badge. */
+/** A card that turns over on click to show its other side; `count` adds an "xN" copies badge.
+ * Only one face is rendered at a time: the card squashes to zero width, swaps face, and widens again.
+ */
 export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Faction) => void, count?: number): HTMLElement {
   const other = (f: Faction): Faction => (f === "church" ? "court" : "church");
   const copies = count && count > 1 ? ` ${count} copies.` : "";
   const label = (f: Faction) => `${cardLabel(def, f)}${copies} Press to flip to the ${sideName(other(f))} side.`;
   const btn = html(`
-    <button type="button" class="flip-card${start === "court" ? " flipped" : ""}">
-      <span class="flip-inner">
-        <span class="flip-face front"></span>
-        <span class="flip-face back"></span>
-      </span>
+    <button type="button" class="flip-card">
+      <span class="flip-inner"></span>
       ${count && count > 1 ? `<span class="copies" aria-hidden="true">x${count}</span>` : ""}
     </button>`);
-  btn.querySelector(".front")!.append(cardEl(def, "church", { mode: "preview" }));
-  btn.querySelector(".back")!.append(cardEl(def, "court", { mode: "preview" }));
+  const inner = btn.querySelector<HTMLElement>(".flip-inner")!;
   let shown = start;
-  btn.setAttribute("aria-label", label(shown));
-  btn.addEventListener("click", () => {
-    shown = other(shown);
-    btn.classList.toggle("flipped", shown === "court");
+  const show = () => {
+    inner.replaceChildren(cardEl(def, shown, { mode: "preview" }));
     btn.setAttribute("aria-label", label(shown));
+  };
+  show();
+  btn.addEventListener("click", () => {
+    if (btn.classList.contains("turning")) return;
+    shown = other(shown);
     onFlip(shown);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return show();
+    btn.classList.add("turning");
+    window.setTimeout(() => { show(); btn.classList.remove("turning"); }, FLIP_HALF_MS);
   });
   return btn;
 }
+
+/** Duration of each half of the flip animation; matches .flip-inner's transition in style.css. */
+const FLIP_HALF_MS = 160;
 
 /** A compact square tile for a character on the field; decorative, the square's button carries the label. */
 export function tileEl(def: CharacterDef, faction: Faction, composure: number, resting: boolean): HTMLElement {
