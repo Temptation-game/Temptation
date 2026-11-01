@@ -197,7 +197,7 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .cover-wrap { position: relative; line-height: 0; }
 .age-badge {
   position: absolute; top: 14px; right: 14px; line-height: 1;
-  display: flex; align-items: center; justify-content: center; width: 54px; height: 54px;
-  font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 20px; color: #f3e6dc;
-  background: #9e2828; border: 2px solid #500a0a; border-radius: 8px; box-shadow: 0 2px 8px #000a;
+  display: flex; align-items: center; justify-content: center; height: 28px; padding: 0 9px;
+  font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 16px; color: #f3e6dc;
+  background: #9e2828dd; border: 1px solid #500a0a; border-radius: 6px; box-shadow: 0 1px 4px #0008;
 }
