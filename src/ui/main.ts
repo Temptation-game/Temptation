@@ -9,7 +9,7 @@ import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
-import { cardEl, cardLabel, cardTerms, setGlossary, squareName, tileEl } from "./view.ts";
+import { cardEl, cardLabel, cardTerms, flipCardEl, setGlossary, squareName, tileEl } from "./view.ts";
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
 type Selection = { from: "hand" | "field"; uid: number } | null;
@@ -203,12 +203,14 @@ function renderStart(): void {
         <button type="button" data-mode="court">Play Court against the AI</button>
         <button type="button" data-mode="rules">Rules</button>
         <button type="button" data-mode="glossary">Glossary</button>
+        <button type="button" data-mode="cards">Cards</button>
       </nav>
     </main>`;
   app.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
     const m = b.dataset.mode!;
     if (m === "rules") renderRules();
     else if (m === "glossary") renderGlossary();
+    else if (m === "cards") renderCardsPage();
     else if (m === "hotseat") startGame({ kind: "hotseat" });
     else startGame({ kind: "ai", human: (m === "church" ? 0 : 1) as PlayerId });
   }));
@@ -237,6 +239,22 @@ function renderPage(title: string, body: string, from: string): void {
 /** The rules from overview.md. */
 function renderRules(): void {
   renderPage("Rules", renderMarkdown(overviewMd, 1), "rules");
+}
+
+/** Announce the side a flippable card now shows. */
+const announceFlip = (name: string) => (f: Faction) => announce(`${name}, ${factionName(f)} side.`);
+
+/** Every card in cards.md, Church side up; click a card to flip it. */
+function renderCardsPage(): void {
+  const ids = Object.keys(defs).sort((a, b) => defs[a].name.localeCompare(defs[b].name));
+  renderPage("Cards", `<p class="muted">Click a card to see her other side.</p><div class="card-grid" role="list"></div>`, "cards");
+  const grid = app.querySelector(".card-grid")!;
+  for (const id of ids) {
+    const item = document.createElement("div");
+    item.setAttribute("role", "listitem");
+    item.append(flipCardEl(defs[id], "church", announceFlip(defs[id].name)));
+    grid.append(item);
+  }
 }
 
 /** The glossary as a definition list, alphabetical. */
@@ -429,6 +447,34 @@ function render(): void {
   }
 }
 
+/** The viewer's remaining deck as flippable cards, one per card with a copies badge, in name order. */
+function renderDeckView(): HTMLElement {
+  const s = state!;
+  const mine = s.players[viewer()];
+  const counts = new Map<string, number>();
+  for (const uid of mine.deck) counts.set(s.cards[uid].defId, (counts.get(s.cards[uid].defId) ?? 0) + 1);
+  const ids = [...counts.keys()].sort((a, b) => s.defs[a].name.localeCompare(s.defs[b].name));
+  app.insertAdjacentHTML("beforeend", `
+    <div class="overlay deck-view"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="deck-title">
+      <h2 id="deck-title">My deck: ${mine.deck.length} cards left</h2>
+      <p class="muted">Sorted by name, so the draw order stays hidden. Click a card to see her other side.</p>
+      <div class="card-grid" role="list"></div>
+      <button type="button" id="close-deck">Close</button>
+    </div></div>`);
+  const grid = app.querySelector(".deck-view .card-grid")!;
+  if (ids.length === 0) grid.innerHTML = '<p role="listitem">Your deck is empty.</p>';
+  for (const id of ids) {
+    const item = document.createElement("div");
+    item.setAttribute("role", "listitem");
+    item.append(flipCardEl(s.defs[id], mine.faction, announceFlip(s.defs[id].name), counts.get(id)));
+    grid.append(item);
+  }
+  const close = () => { panel = null; pendingFocus = "btn:deck"; render(); };
+  app.querySelector("#close-deck")!.addEventListener("click", close);
+  app.querySelector(".deck-view")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); close(); } });
+  return app.querySelector<HTMLElement>(".deck-view .flip-card") ?? app.querySelector<HTMLElement>("#close-deck")!;
+}
+
 /** Show a modal dialog over the match; returns the element that should take focus. */
 function overlay(title: string, inner: string): HTMLElement {
   app.insertAdjacentHTML("beforeend", `
@@ -439,28 +485,19 @@ function overlay(title: string, inner: string): HTMLElement {
 
 /** History or deck contents in a modal side panel; returns the element that should take focus. */
 function renderPanel(p: "history" | "deck"): HTMLElement {
+  if (p === "deck") return renderDeckView();
   const s = state!;
-  let body: string;
-  if (p === "history") {
-    body = readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("");
-  } else {
-    const counts: Record<string, number> = {};
-    for (const uid of s.players[viewer()].deck) {
-      const name = s.defs[s.cards[uid].defId].name;
-      counts[name] = (counts[name] ?? 0) + 1;
-    }
-    body = Object.entries(counts).sort().map(([n, k]) => `<li>${n}, ${k} ${k === 1 ? "copy" : "copies"}</li>`).join("") || "<li>Empty</li>";
-  }
-  const title = p === "history" ? "History" : "My deck";
+  const body = readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("");
+  const title = "History";
   app.insertAdjacentHTML("beforeend", `
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
       <h2 id="panel-title">${title}</h2>
-      <ul tabindex="0" aria-label="${title}, ${p === "history" ? "oldest first" : "remaining cards"}">${body}</ul>
+      <ul tabindex="0" aria-label="${title}, oldest first">${body}</ul>
       <button type="button" id="close-panel">Close</button>
     </div>`);
   const list = app.querySelector<HTMLElement>(".panel ul")!;
   list.scrollTop = list.scrollHeight;
-  const close = () => { panel = null; pendingFocus = `btn:${p === "history" ? "history" : "deck"}`; render(); };
+  const close = () => { panel = null; pendingFocus = "btn:history"; render(); };
   app.querySelector("#close-panel")!.addEventListener("click", close);
   app.querySelector(".panel")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); close(); } });
   return list;

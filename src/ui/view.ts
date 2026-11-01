@@ -107,6 +107,32 @@ export function cardEl(def: CharacterDef, faction: Faction, opts: CardOptions): 
     </${tag}>`);
 }
 
+/** A card that turns over on click to show its other side; `count` adds an "xN" copies badge. */
+export function flipCardEl(def: CharacterDef, start: Faction, onFlip: (shown: Faction) => void, count?: number): HTMLElement {
+  const other = (f: Faction): Faction => (f === "church" ? "court" : "church");
+  const copies = count && count > 1 ? ` ${count} copies.` : "";
+  const label = (f: Faction) => `${cardLabel(def, f)}${copies} Press to flip to the ${sideName(other(f))} side.`;
+  const btn = html(`
+    <button type="button" class="flip-card${start === "court" ? " flipped" : ""}">
+      <span class="flip-inner">
+        <span class="flip-face front"></span>
+        <span class="flip-face back"></span>
+      </span>
+      ${count && count > 1 ? `<span class="copies" aria-hidden="true">x${count}</span>` : ""}
+    </button>`);
+  btn.querySelector(".front")!.append(cardEl(def, "church", { mode: "preview" }));
+  btn.querySelector(".back")!.append(cardEl(def, "court", { mode: "preview" }));
+  let shown = start;
+  btn.setAttribute("aria-label", label(shown));
+  btn.addEventListener("click", () => {
+    shown = other(shown);
+    btn.classList.toggle("flipped", shown === "court");
+    btn.setAttribute("aria-label", label(shown));
+    onFlip(shown);
+  });
+  return btn;
+}
+
 /** A compact square tile for a character on the field; decorative, the square's button carries the label. */
 export function tileEl(def: CharacterDef, faction: Faction, composure: number, resting: boolean): HTMLElement {
   const f = def.faces[faction];
