@@ -16,7 +16,8 @@ type Selection = { from: "hand" | "field"; uid: number } | null;
 type Panel = "history" | "deck" | null;
 
 const defs = parseCards(cardsMd);
-setGlossary(parseGlossary(glossaryMd));
+const glossary = parseGlossary(glossaryMd);
+setGlossary(glossary);
 const app = document.getElementById("app")!;
 
 let state: GameState | null = null;
@@ -201,11 +202,13 @@ function renderStart(): void {
         <button type="button" data-mode="church">Play Church against the AI</button>
         <button type="button" data-mode="court">Play Court against the AI</button>
         <button type="button" data-mode="rules">Rules</button>
+        <button type="button" data-mode="glossary">Glossary</button>
       </nav>
     </main>`;
   app.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
     const m = b.dataset.mode!;
     if (m === "rules") renderRules();
+    else if (m === "glossary") renderGlossary();
     else if (m === "hotseat") startGame({ kind: "hotseat" });
     else startGame({ kind: "ai", human: (m === "church" ? 0 : 1) as PlayerId });
   }));
@@ -215,21 +218,33 @@ function renderStart(): void {
 
 let startFocus = "hotseat";
 
-/** Show the rules (overview.md) and the glossary, with a way back to the menu. */
-function renderRules(): void {
+/** A reading page (rules, glossary) with a way back to the menu; `from` is the menu button to refocus. */
+function renderPage(title: string, body: string, from: string): void {
   app.innerHTML = `
-    <main class="rules">
-      <nav aria-label="Rules navigation"><button type="button" id="back">Back to menu</button></nav>
-      <article aria-labelledby="rules-title">
-        <h1 id="rules-title" tabindex="-1">Rules</h1>
-        ${renderMarkdown(overviewMd, 1)}
-        ${renderMarkdown(glossaryMd, 1)}
+    <main class="doc-page">
+      <nav aria-label="${title} navigation"><button type="button" id="back">Back to menu</button></nav>
+      <article aria-labelledby="page-title">
+        <h1 id="page-title" tabindex="-1">${title}</h1>
+        ${body}
       </article>
     </main>`;
-  const back = () => { startFocus = "rules"; renderStart(); };
+  const back = () => { startFocus = from; renderStart(); };
   app.querySelector("#back")!.addEventListener("click", back);
-  app.querySelector(".rules")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") back(); });
-  app.querySelector<HTMLElement>("#rules-title")!.focus();
+  app.querySelector(".doc-page")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") back(); });
+  app.querySelector<HTMLElement>("#page-title")!.focus();
+}
+
+/** The rules from overview.md. */
+function renderRules(): void {
+  renderPage("Rules", renderMarkdown(overviewMd, 1), "rules");
+}
+
+/** The glossary as a definition list, alphabetical. */
+function renderGlossary(): void {
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const entries = [...glossary].sort((a, b) => a.term.localeCompare(b.term));
+  const body = `<dl class="glossary">${entries.map((e) => `<dt>${esc(e.term)}</dt><dd>${esc(e.definition)}</dd>`).join("")}</dl>`;
+  renderPage("Glossary", body, "glossary");
 }
 
 /** Engine log lines with player numbers replaced by faction names and coordinates by square names. */
