@@ -63,7 +63,7 @@ A character does not act same turn as she enters unless she is *Adventurous*.
 
 A character is yours as long as she is facing your faction's side up. If your Character loses all Composure, she is *tempted*, and her card is given to the opponent. Next time she is played, she enters with full Composure\*.
 
-A Character can only be *converted* through Specials.
+A Character can only be *converted* through Specials. When a character is *converted*, she restores her Composure to the full value on the new side\*.
 
 ## Marriage
 
@@ -96,7 +96,3 @@ An Incantation vanishes immediately upon playing.
 ## Location
 
 The default location is Town Square. It is a 4x4 playing field, where the westmost column is *unholy*, and the eastmost column is *holy*.
-
-## Glossary
-
-TODO
