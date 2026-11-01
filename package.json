@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Temptation: a tactical card game about lesbian nuns and vampires",
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "test": "node --test \"test/unit/**/*.test.ts\"",
     "sim": "node src/cli.ts",
