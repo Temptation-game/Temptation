@@ -32,3 +32,8 @@ test("bullets under a numbered item nest inside it and numbering continues", () 
   assert.equal(renderMarkdown("1) Start:\n- draw\n- discard\n2) Play.\n"),
     "<ol><li>Start:<ul><li>draw</li><li>discard</li></ul></li><li>Play.</li></ol>");
 });
+
+test("http(s) links become anchors opening in a new tab; other link targets stay text", () => {
+  assert.equal(renderMarkdown("See [the license](https://example.org/L) or [x](javascript:alert(1))."),
+    '<p>See <a href="https://example.org/L" target="_blank" rel="noopener">the license</a> or [x](javascript:alert(1)).</p>');
+});

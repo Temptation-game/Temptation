@@ -86,6 +86,7 @@ test("Credits page lists the credits from CREDITS.md and Back returns focus", as
   await expect(page.getByRole("heading", { name: "Credits", level: 1 })).toBeFocused();
   await expect(page.getByRole("heading", { name: "Card art", level: 2 })).toBeVisible();
   await expect(page.locator("article")).toContainText("@shambibble");
+  await expect(page.getByRole("link", { name: "full text" }).first()).toHaveAttribute("href", /\/LICENSE$/);
   await page.getByRole("button", { name: "Back to menu" }).click();
   await expect(page.getByRole("button", { name: "Credits" })).toBeFocused();
 });

@@ -1,4 +1,4 @@
-/** Minimal markdown to HTML for the rules docs: headings, paragraphs, lists, *italic*, **bold**, \* escapes.
+/** Minimal markdown to HTML for the reading pages: headings, paragraphs, lists, *italic*, **bold**, [links](https://...), \* escapes.
  * Usage: element.innerHTML = renderMarkdown(md);
  */
 
@@ -7,6 +7,7 @@ function inline(text: string): string {
   return text
     .replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
     .replace(/\\\*/g, "\u0000")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\u0000/g, "*");

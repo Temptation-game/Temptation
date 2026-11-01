@@ -238,3 +238,4 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
   background: repeating-linear-gradient(45deg, #3a3740 0 8px, #2e2b33 8px 16px) border-box;
   border-color: #46424c; outline-color: #5a5560; cursor: default; aspect-ratio: 2 / 3;
 }
+.doc-page a { color: #f0b8d0; }
