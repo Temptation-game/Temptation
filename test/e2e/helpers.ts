@@ -51,3 +51,20 @@ export async function size(locator: Locator): Promise<string> {
   const b = (await locator.boundingBox())!;
   return `${Math.round(b.width)}x${Math.round(b.height)}`;
 }
+
+/** Start logging every Element.animate() call (class names of the animated element); deterministic, unlike sampling. */
+export async function recordAnimations(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __animated: string[] };
+    w.__animated = [];
+    const original = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) {
+      const sq = this.closest("[data-focus]");
+      w.__animated.push(`${this.className} @${sq?.getAttribute("data-focus") ?? ""}`);
+      return original.apply(this, args);
+    };
+  });
+}
+
+/** Animations logged since recordAnimations(). */
+export const recordedAnimations = (page: Page) => page.evaluate(() => (window as unknown as { __animated: string[] }).__animated);

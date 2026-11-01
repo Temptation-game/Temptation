@@ -10,13 +10,14 @@ import { parseCards } from "../cards.ts";
 import { greedyAction } from "../ai/greedy.ts";
 import { parseGlossary } from "../glossary.ts";
 import { renderMarkdown } from "./markdown.ts";
-import { animateArrive, animateDiscard, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
+import { couples, sentHome } from "./piles.ts";
+import { animateArrive, animateDiscard, animateDraw, animateEnter, animateFlirt, animateMove, reducedMotion } from "./animate.ts";
 import { cardEl, cardLabel, cardTerms, flipCardEl, otherSide, otherSideText, peekButton, setGlossary, squareName, tileEl } from "./view.ts";
 import type { FlipCard } from "./view.ts";
 
 type Mode = { kind: "hotseat" } | { kind: "ai"; human: PlayerId };
 type Selection = { from: "hand" | "field"; uid: number } | null;
-type Panel = "deck" | null;
+type Panel = "deck" | "discards" | null;
 
 const defs = parseCards(cardsMd);
 const glossary = parseGlossary(glossaryMd);
@@ -46,6 +47,12 @@ let endScreenShown = -1;
 const peeking = new Set<number>();
 /** Card under the mouse in the hand or on the field, for the F hotkey. */
 let hoveredUid: number | null = null;
+/** Hand cards each player has already seen, so newly drawn cards can fly in from the deck pile. */
+const shownHands = new Map<PlayerId, Set<number>>();
+/** Cards arriving in the hand by temptation in the current redraw; they get their own animation. */
+let arrivingByTempt = new Set<number>();
+/** Open tab of the discard pile dialog. */
+let discardTab: "sent" | "registry" = "sent";
 /** Card shown in the keyboard detail dialog, and the control to return focus to. */
 let detail: { uid: number; returnTo: string } | null = null;
 /** Field girl shown in the inspect area beside the board. */
@@ -99,6 +106,8 @@ function startGame(m: Mode): void {
   inspected = null;
   peeking.clear();
   hoveredUid = null;
+  shownHands.clear();
+  discardTab = "sent";
   confirmingSurrender = false;
   animating = false;
   selected = null;
@@ -148,7 +157,9 @@ async function perform(a: Action, afterApply: () => void): Promise<boolean> {
   if (id !== matchId) return false;
   state = next;
   afterApply();
+  arrivingByTempt = new Set(leavingRects.map((l) => l.uid));
   render();
+  arrivingByTempt = new Set();
   if (a.type === "play") {
     const sq = squareEl(a.at);
     if (sq) animateEnter(sq);
@@ -452,7 +463,6 @@ function render(): void {
         <button type="button" id="end" data-focus="btn:end" ${myTurn && s.phase !== "discard" ? "" : "disabled"}>${endLabel}</button>
         <button type="button" id="history" data-focus="btn:history" aria-expanded="${historyOpen}" aria-controls="history-log">${historyOpen ? "Hide history" : "History"}</button>
         ${historyOpen ? `<section id="history-log" class="history-inline" aria-label="History, oldest first" tabindex="0"><ol>${readableLog(s).map((l) => `<li>${l.replace(/</g, "&lt;")}</li>`).join("")}</ol></section>` : ""}
-        <button type="button" id="deck" data-focus="btn:deck">My deck</button>
         <div class="spacer"></div>
         <button type="button" id="surrender" class="danger" data-focus="btn:surrender">Surrender</button>
       </aside>
@@ -465,7 +475,11 @@ function render(): void {
         <button type="button" class="inspect-peek" data-focus="btn:inspect-peek" hidden>Show other side (F)</button>
         <p class="hint" aria-hidden="true">Press Shift to keep open</p>
       </aside>
-      <section class="hand" aria-label="Your hand, ${mine.hand.length} cards. Press I on a card for details."></section>
+      <div class="bottom-row">
+        <div class="pile-area deck-area">${deckPileHtml(mine.deck.length)}</div>
+        <section class="hand" aria-label="Your hand, ${mine.hand.length} cards. Press I on a card for details."></section>
+        <div class="pile-area discard-area">${discardPileHtml(s)}</div>
+      </div>
     </div>`;
 
   const grid = app.querySelector<HTMLElement>(".grid")!;
@@ -540,6 +554,7 @@ function render(): void {
   if (hidden) {
     for (let i = 0; i < mine.hand.length; i++) hand.insertAdjacentHTML("beforeend", '<div class="card card-back" aria-hidden="true"></div>');
   }
+  if (!hidden) animateDraws(me, mine.hand);
 
   app.querySelector("#end")!.addEventListener("click", () => {
     if (!humanTurn()) return;
@@ -549,6 +564,7 @@ function render(): void {
   const log = app.querySelector<HTMLElement>("#history-log");
   if (log) log.scrollTop = log.scrollHeight;
   app.querySelector("#deck")!.addEventListener("click", () => { panel = "deck"; render(); });
+  app.querySelector("#discards")!.addEventListener("click", () => { panel = "discards"; render(); });
   app.querySelector("#surrender")!.addEventListener("click", () => {
     if (s.winner === null) { confirmingSurrender = true; render(); }
   });
@@ -557,6 +573,7 @@ function render(): void {
 
   let dialogFocus: HTMLElement | null = null;
   if (panel === "deck") dialogFocus = renderDeckView();
+  if (panel === "discards") dialogFocus = renderDiscardView();
   if (detail) dialogFocus = renderDetail(detail.uid);
   if (handOver && s.winner === null) {
     dialogFocus = overlay(`${factionName(s.players[s.active].faction)}'s turn`, `<p>Pass the device, then continue.</p>
@@ -592,6 +609,111 @@ function render(): void {
     const el = app.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`);
     (el && !(el as HTMLButtonElement).disabled ? el : app.querySelector<HTMLElement>("#history"))?.focus();
   }
+}
+
+/** Face-down deck pile with the remaining count; opens the deck dialog. */
+function deckPileHtml(left: number): string {
+  const label = left === 0 ? "My deck: empty" : `My deck: ${left} ${left === 1 ? "card" : "cards"} left`;
+  const stack = left === 0
+    ? '<span class="pile-empty" aria-hidden="true">Deck empty</span>'
+    : Array.from({ length: Math.min(3, left) }, () => '<span class="card card-back" aria-hidden="true"></span>').join("");
+  return `<button type="button" id="deck" class="pile${left === 0 ? " empty" : ""}" data-focus="btn:deck" aria-label="${label}">
+    <span class="pile-stack">${stack}</span>
+    <span class="pile-caption" aria-hidden="true">Deck${left ? ` (${left})` : ""}</span></button>`;
+}
+
+/** Discard pile: sent-home girls and married couples; opens the Sent Home / Wedding Registry dialog. */
+function discardPileHtml(s: GameState): string {
+  const sent = s.players[0].discard.length + s.players[1].discard.length;
+  const wed = s.married.length;
+  const total = sent + wed;
+  const label = `Discard pile: ${sent} sent home, ${couples(s).length} ${couples(s).length === 1 ? "couple" : "couples"} married`;
+  const stack = total === 0
+    ? '<span class="pile-empty" aria-hidden="true">Empty</span>'
+    : Array.from({ length: Math.min(3, total) }, () => '<span class="card card-back" aria-hidden="true"></span>').join("");
+  return `<button type="button" id="discards" class="pile${total === 0 ? " empty" : ""}" data-focus="btn:discards" aria-label="${label}">
+    <span class="pile-stack">${stack}</span>
+    <span class="pile-caption" aria-hidden="true">Discards${total ? ` (${total})` : ""}</span></button>`;
+}
+
+/** Fly newly seen hand cards in from the deck pile (the opening hand deals one by one). */
+function animateDraws(player: PlayerId, hand: number[]): void {
+  const seen = shownHands.get(player);
+  shownHands.set(player, new Set(hand));
+  const fresh = hand.filter((u) => !seen?.has(u) && !arrivingByTempt.has(u));
+  const from = app.querySelector<HTMLElement>("#deck")?.getBoundingClientRect();
+  if (!from || fresh.length === 0) return;
+  fresh.forEach((uid, i) => {
+    const card = app.querySelector<HTMLElement>(`.hand [data-focus="hand:${uid}"]`);
+    if (card) animateDraw(card, from, i * 110);
+  });
+}
+
+/** The Sent Home and Wedding Registry tabs of the discard pile; returns the element to focus. */
+function renderDiscardView(): HTMLElement {
+  const s = state!;
+  app.insertAdjacentHTML("beforeend", `
+    <div class="overlay deck-view discard-view"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="discard-title">
+      <h2 id="discard-title">Discard pile</h2>
+      <div class="tabs" role="tablist" aria-label="Discard pile">
+        <button type="button" role="tab" id="tab-sent" aria-controls="panel-sent" aria-selected="${discardTab === "sent"}" tabindex="${discardTab === "sent" ? 0 : -1}">Sent Home</button>
+        <button type="button" role="tab" id="tab-registry" aria-controls="panel-registry" aria-selected="${discardTab === "registry"}" tabindex="${discardTab === "registry" ? 0 : -1}">Wedding Registry</button>
+      </div>
+      <div role="tabpanel" id="panel-sent" aria-labelledby="tab-sent" ${discardTab === "sent" ? "" : "hidden"}></div>
+      <div role="tabpanel" id="panel-registry" aria-labelledby="tab-registry" ${discardTab === "registry" ? "" : "hidden"}></div>
+      <button type="button" id="close-discards">Close</button>
+    </div></div>`);
+
+  const sentPanel = app.querySelector<HTMLElement>("#panel-sent")!;
+  for (const list of sentHome(s)) {
+    const total = list.groups.reduce((n, g) => n + g.count, 0);
+    sentPanel.insertAdjacentHTML("beforeend", `<h3>${factionName(list.faction)}'s girls sent home (${total})</h3>`);
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+    grid.setAttribute("role", "list");
+    if (list.groups.length === 0) grid.innerHTML = '<p role="listitem" class="muted">Nobody yet.</p>';
+    for (const g of list.groups) {
+      const item = document.createElement("div");
+      item.setAttribute("role", "listitem");
+      item.append(flipCardEl(s.defs[g.defId], list.faction, announceFlip(s.defs[g.defId].name), g.count));
+      grid.append(item);
+    }
+    sentPanel.append(grid);
+  }
+
+  const regPanel = app.querySelector<HTMLElement>("#panel-registry")!;
+  const pairs = couples(s);
+  if (pairs.length === 0) regPanel.innerHTML = '<p class="muted">No weddings yet.</p>';
+  const list = document.createElement("ol");
+  list.className = "registry";
+  pairs.forEach(([a, b], i) => {
+    const li = document.createElement("li");
+    const nameA = s.defs[s.cards[a].defId].name;
+    const nameB = s.defs[s.cards[b].defId].name;
+    const sideA = s.players[s.cards[a].controller].faction;
+    const sideB = s.players[s.cards[b].controller].faction;
+    li.setAttribute("aria-label", `Wedding ${i + 1}: ${nameA} (${factionName(sideA)}) and ${nameB} (${factionName(sideB)})`);
+    const ca = cardEl(s.defs[s.cards[a].defId], sideA, { mode: "preview" });
+    const cb = cardEl(s.defs[s.cards[b].defId], sideB, { mode: "preview" });
+    li.append(ca);
+    li.insertAdjacentHTML("beforeend", '<span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 4.3 2.4.7-1.2 2.1-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg></span>');
+    li.append(cb);
+    list.append(li);
+  });
+  if (pairs.length) regPanel.append(list);
+
+  const tabs = [...app.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const select = (tab: "sent" | "registry") => { discardTab = tab; render(); app.querySelector<HTMLElement>(`#tab-${tab}`)?.focus(); };
+  tabs.forEach((t) => {
+    t.addEventListener("click", () => select(t.id === "tab-sent" ? "sent" : "registry"));
+    t.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); select(discardTab === "sent" ? "registry" : "sent"); }
+    });
+  });
+  const close = () => { panel = null; pendingFocus = "btn:discards"; render(); };
+  app.querySelector("#close-discards")!.addEventListener("click", close);
+  app.querySelector(".discard-view")!.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); close(); } });
+  return app.querySelector<HTMLElement>(`#tab-${discardTab}`)!;
 }
 
 /** The viewer's remaining deck as flippable cards, one per card with a copies badge, in name order. */

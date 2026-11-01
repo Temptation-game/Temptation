@@ -1,6 +1,6 @@
 /** Animations: they run with motion allowed, lock input while running, and are skipped under reduced motion. */
 import { expect, test, type Page } from "@playwright/test";
-import { playFirstCard, square, startAi, startHotseat, waitForMyTurn } from "./helpers.ts";
+import { playFirstCard, recordAnimations, recordedAnimations, square, startAi, startHotseat, waitForMyTurn } from "./helpers.ts";
 
 /** Surrender from the sidebar and confirm. */
 async function surrender(page: Page): Promise<void> {
@@ -9,10 +9,6 @@ async function surrender(page: Page): Promise<void> {
   await expect(page.getByRole("dialog", { name: /wins/ })).toBeVisible();
 }
 
-/** Number of running animations on the tile inside a square. */
-const running = (page: Page, sq: string) =>
-  square(page, sq).locator(".tile").evaluate((t) => t.getAnimations().length).catch(() => 0);
-
 test.describe("with motion allowed", () => {
   test.use({ contextOptions: { reducedMotion: "no-preference" } });
 
@@ -20,10 +16,10 @@ test.describe("with motion allowed", () => {
     await startAi(page, "Church");
     await page.locator(".hand .card.playable").first().click();
     const target = page.locator(".square.target-play").first();
-    const name = (await target.getAttribute("aria-label"))!.split(",")[0];
+    const focus = await target.getAttribute("data-focus");
+    await recordAnimations(page);
     await target.click();
-    expect(await running(page, name)).toBeGreaterThan(0);
-    await expect.poll(() => running(page, name)).toBe(0);
+    await expect.poll(() => recordedAnimations(page)).toContainEqual(expect.stringMatching(new RegExp(`^tile .*@${focus}$`)));
   });
 
   test("input is locked while a move animates and unlocked afterwards", async ({ page }) => {
@@ -76,6 +72,7 @@ test("under reduced motion the game-over tint shows without hearts", async ({ pa
 
 test("under reduced motion a played girl appears without animating", async ({ page }) => {
   await startAi(page, "Church");
-  const placed = await playFirstCard(page);
-  expect(await running(page, placed)).toBe(0);
+  await recordAnimations(page);
+  await playFirstCard(page);
+  expect(await recordedAnimations(page)).toEqual([]);
 });

@@ -47,7 +47,6 @@ test("match sidebar and hand accessibility tree (structure and label format, ind
         - paragraph: /You \\(Church\\).\\s\\d+ in deck/
       - button "End play phase"
       - button "History"
-      - button "My deck"
       - button "Surrender"
   `);
   await expect(page.locator(".hand")).toMatchAriaSnapshot(`

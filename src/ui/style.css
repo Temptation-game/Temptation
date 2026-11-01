@@ -45,7 +45,7 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 .match {
   height: 100%; display: grid; gap: 16px; padding: 16px;
   grid-template-columns: 230px 1fr 250px; grid-template-rows: minmax(0, 1fr) auto;
-  grid-template-areas: "side board inspect" "hand hand hand";
+  grid-template-areas: "side board inspect" "bottom bottom bottom";
 }
 .sidebar {
   grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto;
@@ -121,11 +121,11 @@ h1, h2 { font-family: var(--title-font); font-style: italic; font-weight: normal
 
 /* ---------- hand ---------- */
 .hand {
-  grid-area: hand; display: flex; justify-content: center; align-items: flex-end; gap: 12px;
+  flex: 1; display: flex; justify-content: center; align-items: flex-end; gap: 12px; container-type: inline-size; min-width: 0;
   padding: 12px 0 4px; position: relative;
 }
 .hand .card { transition: transform 0.12s; cursor: pointer; }
-.hand .hand-slot + .hand-slot, .hand .card-back + .card-back { margin-left: min(0px, calc((100vw - 60px - var(--n) * (var(--card-w) + 12px)) / (var(--n) - 1))); }
+.hand .hand-slot + .hand-slot, .hand > .card-back + .card-back { margin-left: min(0px, calc((100cqw - 24px - var(--n) * (var(--card-w) + 12px)) / (var(--n) - 1))); }
 .hand .card:hover { z-index: 2; }
 .hand .card:hover { transform: translateY(-10px) scale(1.04); }
 .hand .card.playable { outline-color: var(--highlight); }
@@ -281,7 +281,7 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
 .hand-slot { position: relative; flex: none; display: flex; align-items: flex-end; }
 .hand-slot:hover, .hand-slot:focus-within { z-index: 2; }
 .peek-btn {
-  position: absolute; left: -9px; top: -9px; z-index: 3; width: 26px; height: 26px; padding: 0;
+  position: absolute; left: 5px; top: -11px; z-index: 3; width: 26px; height: 26px; padding: 0;
   display: flex; align-items: center; justify-content: center; border-radius: 50%;
   background: #24222a; border: 1px solid #5a5560; opacity: 0.7;
 }
@@ -294,3 +294,27 @@ button.card { font: inherit; color: var(--ink); text-align: left; cursor: pointe
   padding: 1px 8px; border-radius: 8px; background: #000c; color: var(--ink); font-size: 11px; font-style: italic; white-space: nowrap;
 }
 .inspect-peek { font-size: 13px; padding: 4px 10px; }
+
+/* ---------- deck and discard piles ---------- */
+.pile-area { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.bottom-row { grid-area: bottom; display: flex; align-items: flex-end; gap: 16px; min-width: 0; }
+.pile-area { flex: none; width: calc(var(--card-w) * 0.62 + 24px); }
+.pile { position: relative; background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink); }
+.pile-stack { position: relative; display: block; width: calc(var(--card-w) * 0.62); aspect-ratio: 2 / 3; }
+.pile-stack .card-back { position: absolute; inset: 0; width: 100%; padding: 0; border-width: 3px; }
+.pile-stack .card-back:nth-child(2) { transform: translate(3px, -3px); }
+.pile-stack .card-back:nth-child(3) { transform: translate(6px, -6px); }
+.pile:hover .pile-stack .card-back:last-child { outline-color: var(--highlight); }
+.pile-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 2px dashed #5a5560; border-radius: 8px; color: var(--muted); font-size: 13px; font-style: italic;
+}
+.pile-caption { font-size: 13px; color: var(--muted); }
+.tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.tabs [role="tab"] { background: #24222a; border-color: #4a4450; }
+.tabs [role="tab"][aria-selected="true"] { background: #3a3640; border-color: #f0b8d0; }
+.discard-view h3 { margin: 12px 0 0; font-family: var(--title-font); font-style: italic; font-weight: normal; color: #f0b8d0; }
+.registry { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; align-items: center; }
+.registry li { display: flex; align-items: center; gap: 10px; }
+.registry .card { --card-w: 140px; }
+.registry .ring svg { width: 34px; height: 34px; fill: #fff4c8; filter: drop-shadow(0 0 6px #ffd27a); }

@@ -163,3 +163,19 @@ export function animateArrive(card: HTMLElement, from: DOMRect): void {
     { duration: 650, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)" },
   ).finished.then(() => { card.style.zIndex = ""; });
 }
+
+/** A drawn card flies from the deck pile into its hand slot; `delay` staggers the opening hand. */
+export function animateDraw(card: HTMLElement, from: DOMRect, delay: number): void {
+  if (reducedMotion()) return;
+  const to = card.getBoundingClientRect();
+  const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+  const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+  card.animate(
+    [
+      { transform: `translate(${dx}px, ${dy}px) scale(0.6) rotate(-6deg)`, opacity: 0 },
+      { transform: `translate(${dx * 0.4}px, ${dy * 0.4 - 30}px) scale(0.85) rotate(-2deg)`, opacity: 1, offset: 0.45 },
+      { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
+    ],
+    { duration: 480, delay, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)", fill: "backwards" },
+  );
+}
